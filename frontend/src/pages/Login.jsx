@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { GraduationCap, Lock, User, AlertCircle, ArrowRight, Sparkles } from 'lucide-react';
+import { GraduationCap, Lock, User, AlertCircle, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
 
 export const Login = () => {
   const { login } = useAuth();
@@ -11,6 +12,7 @@ export const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,9 +30,29 @@ export const Login = () => {
     }
   };
 
+  const handleInstantVerify = async () => {
+    if (!rollNo.trim()) return;
+    setVerifying(true);
+    try {
+      await api.post(`/auth/verify-account/${rollNo.trim().toUpperCase()}`);
+      setError('');
+      if (password) {
+        await login(rollNo.trim().toUpperCase(), password);
+        navigate('/mentors');
+      } else {
+        alert(`Account ${rollNo.toUpperCase()} verified! Please enter your password to sign in.`);
+      }
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Failed to auto-verify account.');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   const handleQuickFill = (r, p) => {
     setRollNo(r);
     setPassword(p);
+    setError('');
   };
 
   return (
@@ -47,9 +69,23 @@ export const Login = () => {
         </div>
 
         {error && (
-          <div className="flex items-start space-x-2 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs">
-            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-rose-600" />
-            <span>{error}</span>
+          <div className="p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-2">
+            <div className="flex items-start space-x-2">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-rose-600" />
+              <span className="font-medium">{error}</span>
+            </div>
+
+            {error.toLowerCase().includes('verify') && (
+              <button
+                type="button"
+                onClick={handleInstantVerify}
+                disabled={verifying}
+                className="w-full py-2 px-3 rounded-lg bg-emerald-700 text-white font-semibold text-xs hover:bg-emerald-800 transition-colors flex items-center justify-center space-x-1.5 shadow-xs"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>{verifying ? 'Activating...' : `Click to Activate & Log In as ${rollNo || 'Student'}`}</span>
+              </button>
+            )}
           </div>
         )}
 
@@ -62,9 +98,12 @@ export const Login = () => {
               <input
                 type="text"
                 required
-                placeholder="e.g. 2024BTECH001"
+                placeholder="e.g. 2025BTECH027"
                 value={rollNo}
-                onChange={(e) => setRollNo(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  setRollNo(e.target.value.toUpperCase());
+                  setError('');
+                }}
                 className="w-full px-3.5 py-2.5 rounded-lg border border-academic-border bg-academic-bg text-academic-primary text-sm font-mono placeholder:text-academic-muted/50 focus:outline-none focus:ring-2 focus:ring-academic-burgundy/40 focus:border-academic-burgundy"
               />
               <User className="absolute right-3 top-3 w-4 h-4 text-academic-muted" />
@@ -82,7 +121,10 @@ export const Login = () => {
                 required
                 placeholder="••••••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError('');
+                }}
                 className="w-full px-3.5 py-2.5 rounded-lg border border-academic-border bg-academic-bg text-academic-primary text-sm placeholder:text-academic-muted/50 focus:outline-none focus:ring-2 focus:ring-academic-burgundy/40 focus:border-academic-burgundy"
               />
               <Lock className="absolute right-3 top-3 w-4 h-4 text-academic-muted" />

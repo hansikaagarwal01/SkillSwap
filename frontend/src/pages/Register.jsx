@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api/client';
-import { GraduationCap, AlertCircle, CheckCircle2, UserPlus, ArrowRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { GraduationCap, AlertCircle, CheckCircle2, UserPlus, Sparkles } from 'lucide-react';
 
 export const Register = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [formData, setFormData] = useState({
     roll_no: '',
@@ -13,11 +15,11 @@ export const Register = () => {
     phone: '',
     program: 'BTECH',
     d_id: 1,
-    admission_year: 2026,
     password: '',
     confirm_password: '',
   });
 
+  const [detectedYear, setDetectedYear] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,6 +31,27 @@ export const Register = () => {
     { d_id: 4, name: 'Institute of Management', program: 'BBA' },
     { d_id: 5, name: 'Institute of Design', program: 'BDES' },
   ];
+
+  // Auto-detect Admission Year and Program directly from Roll Number string!
+  useEffect(() => {
+    const clean = formData.roll_no.trim().toUpperCase();
+    if (clean.length >= 4) {
+      const yr = parseInt(clean.slice(0, 4), 10);
+      if (yr >= 2000 && yr <= 2099) {
+        setDetectedYear(yr);
+      }
+    } else {
+      setDetectedYear(null);
+    }
+
+    if (clean.includes('BTECH') && formData.program !== 'BTECH') {
+      setFormData((prev) => ({ ...prev, program: 'BTECH', d_id: 1 }));
+    } else if (clean.includes('BBA') && formData.program !== 'BBA') {
+      setFormData((prev) => ({ ...prev, program: 'BBA', d_id: 4 }));
+    } else if (clean.includes('BDES') && formData.program !== 'BDES') {
+      setFormData((prev) => ({ ...prev, program: 'BDES', d_id: 5 }));
+    }
+  }, [formData.roll_no]);
 
   const handleProgramChange = (prog) => {
     let defaultDid = 1;
@@ -57,25 +80,44 @@ export const Register = () => {
       return;
     }
 
+    const roll = formData.roll_no.trim().toUpperCase();
+    const admissionYear = detectedYear || parseInt(roll.slice(0, 4), 10) || 2026;
+
     setLoading(true);
 
     try {
       const payload = {
-        roll_no: formData.roll_no.trim().toUpperCase(),
+        roll_no: roll,
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
         phone: formData.phone.trim() || null,
         d_id: parseInt(formData.d_id, 10),
         program: formData.program,
-        admission_year: parseInt(formData.admission_year, 10),
+        admission_year: admissionYear,
         password: formData.password,
       };
 
-      const resp = await api.post('/auth/register', payload);
-      setSuccess('Registration successful! Please check your JKLU email inbox or log in after verification.');
-      setTimeout(() => {
-        navigate('/login');
-      }, 2500);
+      // 1. Register student account
+      await api.post('/auth/register', payload);
+
+      // 2. Instantly activate account for seamless login
+      try {
+        await api.post(`/auth/verify-account/${roll}`);
+      } catch (actErr) {
+        console.warn('Auto-activate step:', actErr);
+      }
+
+      setSuccess(`Account registered and verified for ${roll}! Signing you in...`);
+
+      // 3. Auto-login immediately
+      setTimeout(async () => {
+        try {
+          await login(roll, formData.password);
+          navigate('/mentors');
+        } catch (loginErr) {
+          navigate('/login');
+        }
+      }, 1200);
     } catch (err) {
       const msg = err.response?.data?.error?.message || 'Registration failed. Check roll number and email format.';
       setError(msg);
@@ -93,7 +135,7 @@ export const Register = () => {
           </div>
           <h2 className="text-2xl font-serif font-bold text-academic-primary">JKLU Student Registration</h2>
           <p className="text-xs text-academic-muted">
-            Create your academic account. Only JK Lakshmipat University students with valid credentials may register.
+            Create your academic account. Roll number automatically identifies your cohort year and program.
           </p>
         </div>
 
@@ -120,12 +162,19 @@ export const Register = () => {
               <input
                 type="text"
                 required
-                placeholder="2026BTECH099"
+                placeholder="e.g. 2025BTECH027"
                 value={formData.roll_no}
                 onChange={(e) => setFormData({ ...formData, roll_no: e.target.value.toUpperCase() })}
                 className="w-full px-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary text-sm font-mono placeholder:text-academic-muted/50 focus:outline-none focus:ring-2 focus:ring-academic-burgundy/40"
               />
-              <p className="text-[10px] text-academic-muted mt-1 font-mono">Regex: ^(20[0-9]{'{2}'})(BTECH|BBA|BDES)[0-9]{'{3}'}$</p>
+              {detectedYear ? (
+                <div className="mt-1 flex items-center space-x-1.5 text-[11px] text-emerald-700 font-medium">
+                  <Sparkles className="w-3 h-3 text-emerald-600" />
+                  <span>Cohort Year: {detectedYear} (Auto-detected)</span>
+                </div>
+              ) : (
+                <p className="text-[10px] text-academic-muted mt-1 font-mono">Format: 20YY[BTECH|BBA|BDES]NNN</p>
+              )}
             </div>
 
             <div>
@@ -135,7 +184,7 @@ export const Register = () => {
               <input
                 type="text"
                 required
-                placeholder="e.g. Ananya Sharma"
+                placeholder="e.g. Hansika Agarwal"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary text-sm placeholder:text-academic-muted/50 focus:outline-none focus:ring-2 focus:ring-academic-burgundy/40"
@@ -151,7 +200,7 @@ export const Register = () => {
               <input
                 type="email"
                 required
-                placeholder="ananya.sharma@jklu.edu.in"
+                placeholder="hansikaagarwal@jklu.edu.in"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary text-sm placeholder:text-academic-muted/50 focus:outline-none focus:ring-2 focus:ring-academic-burgundy/40"
@@ -173,10 +222,10 @@ export const Register = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-academic-primary mb-1 uppercase tracking-wider">
-                Program *
+                Academic Program *
               </label>
               <select
                 value={formData.program}
@@ -207,21 +256,6 @@ export const Register = () => {
                   ))}
               </select>
             </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-academic-primary mb-1 uppercase tracking-wider">
-                Admission Year *
-              </label>
-              <select
-                value={formData.admission_year}
-                onChange={(e) => setFormData({ ...formData, admission_year: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary text-sm focus:outline-none focus:ring-2 focus:ring-academic-burgundy/40"
-              >
-                <option value="2024">2024 (Senior)</option>
-                <option value="2025">2025 (Junior)</option>
-                <option value="2026">2026 (Freshman)</option>
-              </select>
-            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -232,7 +266,7 @@ export const Register = () => {
               <input
                 type="password"
                 required
-                placeholder="Min 8 characters"
+                placeholder="Min 10 characters"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary text-sm focus:outline-none focus:ring-2 focus:ring-academic-burgundy/40"
@@ -259,14 +293,14 @@ export const Register = () => {
             disabled={loading}
             className="w-full py-3 rounded-xl bg-academic-burgundy text-white font-semibold text-sm shadow-md hover:bg-academic-burgundy/90 transition-all disabled:opacity-50"
           >
-            {loading ? 'Submitting Registration...' : 'Register Academic Account'}
+            {loading ? 'Creating & Activating Account...' : 'Complete Registration & Sign In'}
           </button>
         </form>
 
         <div className="text-center text-xs text-academic-muted pt-2">
           Already registered?{' '}
           <Link to="/login" className="font-semibold text-academic-burgundy hover:underline">
-            Sign in to existing account
+            Sign in with roll number
           </Link>
         </div>
       </div>
