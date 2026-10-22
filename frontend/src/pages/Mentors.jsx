@@ -16,6 +16,12 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
+  Music,
+  Palette,
+  Activity,
+  Code,
+  Briefcase,
+  Layers,
 } from 'lucide-react';
 
 export const Mentors = () => {
@@ -30,6 +36,7 @@ export const Mentors = () => {
 
   // Filter states
   const [skillsList, setSkillsList] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedSkill, setSelectedSkill] = useState('');
   const [selectedProgram, setSelectedProgram] = useState('');
   const [minRating, setMinRating] = useState('');
@@ -38,6 +45,7 @@ export const Mentors = () => {
   // Request Modal state
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [selectedMentor, setSelectedMentor] = useState(null);
+  const [mentorSkills, setMentorSkills] = useState([]);
   const [requestData, setRequestData] = useState({
     skill_id: '',
     topic: '',
@@ -67,7 +75,11 @@ export const Mentors = () => {
       if (selectedSkill) params.append('skill_id', selectedSkill);
       if (selectedProgram) params.append('program', selectedProgram);
       if (minRating) params.append('min_rating', minRating);
-      if (search) params.append('q', search);
+      if (search) {
+        params.append('q', search);
+      } else if (selectedCategory && selectedCategory !== 'ALL') {
+        params.append('q', selectedCategory);
+      }
 
       const resp = await api.get(`/mentors?${params.toString()}`);
       setMentors(resp.data.items);
@@ -82,7 +94,7 @@ export const Mentors = () => {
 
   useEffect(() => {
     fetchMentors();
-  }, [page, selectedSkill, selectedProgram, minRating]);
+  }, [page, selectedCategory, selectedSkill, selectedProgram, minRating]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -90,22 +102,48 @@ export const Mentors = () => {
     fetchMentors();
   };
 
-  const openRequestModal = (mentor) => {
+  const handleCategorySelect = (category) => {
+    setSelectedCategory(category);
+    setSelectedSkill('');
+    setPage(1);
+  };
+
+  const openRequestModal = async (mentor) => {
     if (!user) {
       navigate('/login');
       return;
     }
+
     setSelectedMentor(mentor);
+    const initialSkillId = mentor.skill_id;
     setRequestData({
-      skill_id: mentor.teachable_skills[0]?.skill_id || '',
+      skill_id: initialSkillId,
       topic: '',
       mode: 'ONLINE',
       scheduled_at: new Date(Date.now() + 86400000 * 2).toISOString().slice(0, 16),
       meeting_link: 'https://meet.google.com/abc-defg-hij',
     });
+    setMentorSkills([
+      {
+        skill_id: mentor.skill_id,
+        skill_name: mentor.skill_name,
+        proficiency_level: mentor.proficiency_level,
+      },
+    ]);
     setRequestError('');
     setRequestSuccess('');
     setRequestModalOpen(true);
+
+    // Fetch all teachable skills for this mentor so the learner can pick any
+    try {
+      const res = await api.get(`/students/${mentor.roll_no}/skills`);
+      const teachable = res.data.filter((s) => s.can_teach);
+      if (teachable.length > 0) {
+        setMentorSkills(teachable);
+      }
+    } catch (e) {
+      // Keep initial single skill
+    }
   };
 
   const handleRequestSubmit = async (e) => {
@@ -114,11 +152,18 @@ export const Mentors = () => {
     setRequestError('');
     setRequestSuccess('');
 
+    const parsedSkillId = parseInt(requestData.skill_id, 10);
+    if (!parsedSkillId || isNaN(parsedSkillId)) {
+      setRequestError('Please select a valid skill for mentorship.');
+      setRequestLoading(false);
+      return;
+    }
+
     try {
       const payload = {
         mentor_roll_no: selectedMentor.roll_no,
-        skill_id: parseInt(requestData.skill_id, 10),
-        topic: requestData.topic,
+        skill_id: parsedSkillId,
+        topic: requestData.topic.trim(),
         mode: requestData.mode,
         scheduled_at: new Date(requestData.scheduled_at).toISOString(),
         meeting_link: requestData.mode === 'ONLINE' ? requestData.meeting_link : null,
@@ -138,6 +183,15 @@ export const Mentors = () => {
     }
   };
 
+  // Derive categories from skills list
+  const categories = ['ALL', ...new Set(skillsList.map((s) => s.category).filter(Boolean))];
+
+  // Scoped skills for dropdown
+  const filteredSkillsList =
+    selectedCategory === 'ALL'
+      ? skillsList
+      : skillsList.filter((s) => s.category === selectedCategory);
+
   return (
     <div className="space-y-8 py-6">
       {/* Header & Filter Bar */}
@@ -145,18 +199,39 @@ export const Mentors = () => {
         <div>
           <h1 className="text-3xl font-serif font-bold text-academic-primary">Verified Peer Mentors</h1>
           <p className="text-xs text-academic-muted mt-1">
-            Browse campus peers offering 1-on-1 mentorship across technical and academic domains. Free of cost.
+            Connect 1-on-1 with verified campus mentors across technical subjects, guitar, dance, fine arts, photography, and creative passions. 100% free of cost.
           </p>
         </div>
 
-        {/* Filters */}
+        {/* Category Filter Pills */}
+        <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none text-xs">
+          {categories.map((cat) => {
+            const isSelected = selectedCategory === cat;
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => handleCategorySelect(cat)}
+                className={`px-3 py-1.5 rounded-full border font-medium whitespace-nowrap transition-all ${
+                  isSelected
+                    ? 'bg-academic-burgundy text-white border-academic-burgundy shadow-xs'
+                    : 'bg-academic-card text-academic-muted border-academic-border hover:bg-academic-secondary hover:text-academic-primary'
+                }`}
+              >
+                {cat === 'ALL' ? '🌟 All Domains' : cat}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Search & Fine Controls */}
         <div className="bg-academic-card border border-academic-border rounded-xl p-4 shadow-xs space-y-3">
           <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 text-xs">
             {/* Search */}
             <div className="relative sm:col-span-2">
               <input
                 type="text"
-                placeholder="Search mentor by name or roll no..."
+                placeholder="Search mentor by name, roll no, or skill (e.g. Guitar, Python)..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-8 pr-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary placeholder:text-academic-muted/50 focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
@@ -174,8 +249,8 @@ export const Mentors = () => {
                 }}
                 className="w-full px-2.5 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
               >
-                <option value="">All Skills</option>
-                {skillsList.map((sk) => (
+                <option value="">All Skills ({filteredSkillsList.length})</option>
+                {filteredSkillsList.map((sk) => (
                   <option key={sk.skill_id} value={sk.skill_id}>
                     {sk.name}
                   </option>
@@ -226,13 +301,13 @@ export const Mentors = () => {
         <div className="py-20 text-center bg-academic-card border border-academic-border rounded-xl p-8 space-y-2">
           <Users className="w-10 h-10 text-academic-muted mx-auto" />
           <p className="font-serif font-bold text-base text-academic-primary">No mentors matched your filter</p>
-          <p className="text-xs text-academic-muted">Try resetting search criteria or choosing a different skill.</p>
+          <p className="text-xs text-academic-muted">Try resetting search criteria or choosing a different skill or domain.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {mentors.map((mentor) => (
             <div
-              key={mentor.roll_no}
+              key={`${mentor.roll_no}-${mentor.skill_id}`}
               className="bg-academic-card border border-academic-border rounded-xl p-6 shadow-xs card-hover flex flex-col justify-between space-y-4"
             >
               <div>
@@ -266,25 +341,20 @@ export const Mentors = () => {
                     <span>
                       {mentor.avg_rating ? `★ ${mentor.avg_rating.toFixed(1)}` : 'New Mentor'}
                     </span>
-                    <span>({mentor.review_count} reviews)</span>
+                    <span>({mentor.total_reviews ?? 0} reviews)</span>
                   </div>
                 </div>
 
-                {/* Teachable skills */}
+                {/* Teachable skill */}
                 <div className="mt-4 space-y-1.5">
                   <p className="text-[11px] font-semibold text-academic-muted uppercase tracking-wider">
-                    Teachable Subjects
+                    Teachable Subject
                   </p>
                   <div className="flex flex-wrap gap-1.5">
-                    {mentor.teachable_skills?.map((sk) => (
-                      <div
-                        key={sk.skill_id}
-                        className="inline-flex items-center space-x-1 bg-academic-secondary px-2 py-0.5 rounded border border-academic-border/60 text-xs"
-                      >
-                        <span className="font-medium text-academic-primary">{sk.skill_name}</span>
-                        <ProficiencyBadge level={sk.proficiency_level} />
-                      </div>
-                    ))}
+                    <div className="inline-flex items-center space-x-1.5 bg-academic-secondary px-2.5 py-1 rounded border border-academic-border/60 text-xs">
+                      <span className="font-semibold text-academic-primary">{mentor.skill_name}</span>
+                      <ProficiencyBadge level={mentor.proficiency_level} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -292,6 +362,7 @@ export const Mentors = () => {
               {/* Action Button */}
               <div className="pt-2">
                 <button
+                  type="button"
                   onClick={() => openRequestModal(mentor)}
                   disabled={user?.roll_no === mentor.roll_no}
                   className="w-full py-2.5 rounded-lg bg-academic-burgundy text-white font-semibold text-xs shadow-xs hover:bg-academic-burgundy/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center space-x-1.5"
@@ -342,15 +413,15 @@ export const Mentors = () => {
 
           <div>
             <label className="block font-semibold text-academic-primary mb-1 uppercase tracking-wider">
-              Topic / Focus Skill *
+              Mentorship Subject / Focus Skill *
             </label>
             <select
               value={requestData.skill_id}
-              onChange={(e) => setRequestData({ ...requestData, skill_id: e.target.value })}
+              onChange={(e) => setRequestData({ ...requestData, skill_id: parseInt(e.target.value, 10) })}
               required
-              className="w-full p-2.5 rounded-lg border border-academic-border bg-academic-bg text-academic-primary focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
+              className="w-full p-2.5 rounded-lg border border-academic-border bg-academic-bg text-academic-primary focus:outline-none focus:ring-1 focus:ring-academic-burgundy font-medium"
             >
-              {selectedMentor?.teachable_skills?.map((sk) => (
+              {mentorSkills.map((sk) => (
                 <option key={sk.skill_id} value={sk.skill_id}>
                   {sk.skill_name} ({sk.proficiency_level})
                 </option>
@@ -365,7 +436,7 @@ export const Mentors = () => {
             <textarea
               required
               rows={3}
-              placeholder="e.g. Need assistance understanding dynamic programming memoization vs tabulation before mid-terms."
+              placeholder="e.g. Need assistance with fingerpicking transitions, guitar tuning, and understanding chord progressions."
               value={requestData.topic}
               onChange={(e) => setRequestData({ ...requestData, topic: e.target.value })}
               className="w-full p-2.5 rounded-lg border border-academic-border bg-academic-bg text-academic-primary focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
@@ -429,7 +500,7 @@ export const Mentors = () => {
               disabled={requestLoading}
               className="px-4 py-2 rounded-lg bg-academic-burgundy text-white font-semibold shadow-xs hover:bg-academic-burgundy/90 disabled:opacity-50"
             >
-              {requestLoading ? 'Sending...' : 'Confirm Request'}
+              {requestLoading ? 'Sending Request...' : 'Confirm Mentorship Request'}
             </button>
           </div>
         </form>

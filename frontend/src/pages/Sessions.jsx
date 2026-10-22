@@ -83,7 +83,7 @@ export const Sessions = () => {
     setRescheduleError('');
     try {
       await api.patch(`/sessions/${activeSession.session_id}/reschedule`, {
-        new_scheduled_at: new Date(rescheduleTime).toISOString(),
+        scheduled_at: new Date(rescheduleTime).toISOString(),
       });
       setRescheduleModalOpen(false);
       fetchSessions();

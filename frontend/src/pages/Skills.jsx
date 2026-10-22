@@ -111,9 +111,9 @@ export const Skills = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-academic-primary">Academic Skills Catalog</h1>
+          <h1 className="text-3xl font-serif font-bold text-academic-primary">Skills & Talents Catalog</h1>
           <p className="text-xs text-academic-muted mt-1">
-            Standardized technical, design, and management competencies offered across university curricula.
+            Explore academic competencies, music, dance, fine arts, photography, sports, and creative talents across JKLU.
           </p>
         </div>
 
@@ -122,7 +122,7 @@ export const Skills = () => {
           className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-lg bg-academic-burgundy text-white font-semibold text-xs shadow-xs hover:bg-academic-burgundy/90 transition-all self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
-          <span>Add Academic Skill</span>
+          <span>Register New Skill</span>
         </button>
       </div>
 
@@ -229,25 +229,29 @@ export const Skills = () => {
 
           <div>
             <label className="block font-semibold text-academic-primary mb-1 uppercase tracking-wider">
-              Academic Category *
+              Skill Domain / Category *
             </label>
             <select
               value={newSkill.category}
               onChange={(e) => setNewSkill({ ...newSkill, category: e.target.value })}
-              className="w-full p-2.5 rounded-lg border border-academic-border bg-academic-bg text-academic-primary focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
+              className="w-full p-2.5 rounded-lg border border-academic-border bg-academic-bg text-academic-primary focus:outline-none focus:ring-1 focus:ring-academic-burgundy font-medium"
             >
-              <option value="Computer Science">Computer Science</option>
-              <option value="Electronics & IoT">Electronics & IoT</option>
-              <option value="Management & Finance">Management & Finance</option>
-              <option value="Design & UI/UX">Design & UI/UX</option>
-              <option value="Mathematics & AI">Mathematics & AI</option>
-              <option value="Soft Skills & Career">Soft Skills & Career</option>
+              <option value="Computer Science">Computer Science & Programming</option>
+              <option value="Design">Design & UI/UX</option>
+              <option value="Business">Business & Management</option>
+              <option value="Music & Performing Arts">Music & Performing Arts (Guitar, Vocals, Production)</option>
+              <option value="Dance & Performing Arts">Dance & Performing Arts (Western, Classical, Hip-Hop)</option>
+              <option value="Fine Arts & Visual Media">Fine Arts & Visual Media (Sketching, Painting, Photography)</option>
+              <option value="Literary & Creative Arts">Literary & Creative Arts (Poetry, Creative Writing)</option>
+              <option value="Sports & Strategy">Sports & Strategy (Chess, Tactics)</option>
+              <option value="Communication">Communication & Public Speaking</option>
+              <option value="Electronics">Electronics & Hardware</option>
             </select>
           </div>
 
           <div>
             <label className="block font-semibold text-academic-primary mb-1 uppercase tracking-wider">
-              Academic Scope / Description
+              Skill Scope / Learning Description
             </label>
             <textarea
               rows={3}

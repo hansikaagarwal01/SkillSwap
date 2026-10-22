@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, Literal
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 class SessionCreate(BaseModel):
     mentor_roll_no: str
@@ -20,13 +20,16 @@ class SessionCreate(BaseModel):
 
 
 class SessionReschedule(BaseModel):
-    scheduled_at: datetime
+    scheduled_at: Optional[datetime] = None
+    new_scheduled_at: Optional[datetime] = None
 
-    @field_validator("scheduled_at")
-    @classmethod
-    def validate_future(cls, v: datetime) -> datetime:
-        # Rescheduled date should be provided
-        return v
+    @model_validator(mode="after")
+    def resolve_time(self):
+        if not self.scheduled_at and not self.new_scheduled_at:
+            raise ValueError("Scheduled time must be provided.")
+        if not self.scheduled_at:
+            self.scheduled_at = self.new_scheduled_at
+        return self
 
 
 class SessionStatusUpdate(BaseModel):

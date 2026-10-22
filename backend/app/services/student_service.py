@@ -274,6 +274,7 @@ class StudentService:
         min_proficiency: Optional[str] = None,
         min_rating: Optional[float] = None,
         program: Optional[str] = None,
+        q: Optional[str] = None,
         page: int = 1,
         page_size: int = 10
     ) -> PageResponse[MentorResponse]:
@@ -297,6 +298,16 @@ class StudentService:
             query = query.filter(StudentSkill.skill_id == skill_id)
         if program:
             query = query.filter(Student.program == program.upper())
+        if q and q.strip():
+            term = f"%{q.strip()}%"
+            query = query.filter(
+                or_(
+                    Student.name.ilike(term),
+                    Student.roll_no.ilike(term),
+                    Skill.name.ilike(term),
+                    Skill.category.ilike(term)
+                )
+            )
 
         rows = query.all()
         mentor_results: list[MentorResponse] = []

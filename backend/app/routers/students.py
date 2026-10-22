@@ -50,6 +50,7 @@ def discover_mentors(
     min_proficiency: Optional[Literal["BEGINNER", "INTERMEDIATE", "ADVANCED", "EXPERT"]] = Query(None),
     min_rating: Optional[float] = Query(None, ge=1.0, le=5.0),
     program: Optional[Literal["BTECH", "BBA", "BDES"]] = Query(None),
+    q: Optional[str] = Query(None, description="Search query by mentor name, roll no, or skill"),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
     db: Session = Depends(get_db)
@@ -60,6 +61,7 @@ def discover_mentors(
         min_proficiency=min_proficiency,
         min_rating=min_rating,
         program=program,
+        q=q,
         page=page,
         page_size=page_size
     )

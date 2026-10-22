@@ -149,36 +149,51 @@ INSERT INTO skill (skill_id, name, category, description, created_at) VALUES
 (15, 'Mobile Development (Flutter)', 'Computer Science', 'Cross-platform mobile apps using Dart and Flutter framework.', '2024-08-01 09:00:00'),
 (16, 'Embedded Systems & Arduino',   'Electronics',      'Microcontroller programming, sensor integration, C/C++.', '2024-08-01 09:00:00'),
 (17, 'Rust Systems Programming',     'Computer Science', 'Memory safety without garbage collection, borrow checker.', '2024-08-01 09:00:00'), -- Unused in sessions
-(18, 'Quantitative Aptitude',        'General',          'Logical reasoning, permutations, probability for placements.', '2024-08-01 09:00:00'); -- Unused in sessions
+(18, 'Quantitative Aptitude',        'General',          'Logical reasoning, permutations, probability for placements.', '2024-08-01 09:00:00'), -- Unused in sessions
+(19, 'Acoustic & Electric Guitar',             'Music & Performing Arts', 'Chords, strumming patterns, fingerpicking techniques, tabs, and solo improvisation.', '2024-08-01 09:00:00'),
+(20, 'Western & Contemporary Dance',           'Dance & Performing Arts', 'Hip-hop choreography, urban grooves, contemporary body isolation, and rhythm training.', '2024-08-01 09:00:00'),
+(21, 'Classical Dance (Kathak & Bharatanatyam)', 'Dance & Performing Arts', 'Classical mudras, rhythmic footwork (tatkar), abhinaya expressions, and traditional thumri.', '2024-08-01 09:00:00'),
+(22, 'Sketching & Acrylic Painting',           'Fine Arts & Visual Media', 'Pencil shading, facial proportions, perspective, canvas preparation, and acrylic mixing.', '2024-08-01 09:00:00'),
+(23, 'Digital Photography & Lightroom',        'Fine Arts & Visual Media', 'DSLR exposure triangle, framing, golden hour portraits, and Adobe Lightroom CC color grading.', '2024-08-01 09:00:00'),
+(24, 'Music Production & Beatmaking',          'Music & Performing Arts', 'FL Studio, Ableton Live, MIDI arrangement, beat programming, and sound synthesis.', '2024-08-01 09:00:00'),
+(25, 'Vocal Music & Singing',                  'Music & Performing Arts', 'Vocal warmups, pitch accuracy, breathing techniques, riyaz, and acoustic singing.', '2024-08-01 09:00:00'),
+(26, 'Creative Writing & Spoken Word',         'Literary & Creative Arts', 'Poetry composition, metaphor crafting, storytelling arcs, and open-mic stage performance.', '2024-08-01 09:00:00'),
+(27, 'Chess Strategy & Tactics',               'Sports & Strategy',        'Opening principles, pin/fork tactics, pawn structures, endgame mastery, and time control.', '2024-08-01 09:00:00'),
+(28, 'Video Editing & Cinematography',         'Fine Arts & Visual Media', 'Premiere Pro / DaVinci Resolve editing, cinematic transitions, color correction, and audio cleanup.', '2024-08-01 09:00:00');
 
 -- ----------------------------------------------------------------------------
 -- 6. STUDENT SKILLS (Mappings with proficiency and can_teach flag)
 -- ----------------------------------------------------------------------------
 INSERT INTO student_skill (roll_no, skill_id, proficiency_level, can_teach, created_at) VALUES
--- Aarav Sharma (BTECH 2024) - Mentor in Python, DBMS, DSA
+-- Aarav Sharma (BTECH 2024) - Mentor in Python, DBMS, DSA, Guitar, Chess
 ('2024BTECH001', 1,  'EXPERT',       TRUE,  '2024-08-05 10:00:00'),
 ('2024BTECH001', 2,  'EXPERT',       TRUE,  '2024-08-05 10:00:00'),
 ('2024BTECH001', 5,  'ADVANCED',     TRUE,  '2024-08-05 10:00:00'),
+('2024BTECH001', 19, 'ADVANCED',     TRUE,  '2024-08-05 10:00:00'),
+('2024BTECH001', 27, 'EXPERT',       TRUE,  '2024-08-05 10:00:00'),
 
--- Bhavya Patel (BTECH 2024) - Mentor in Python, React, ML
+-- Bhavya Patel (BTECH 2024) - Mentor in Python, React, ML, Music Production
 ('2024BTECH002', 1,  'EXPERT',       TRUE,  '2024-08-05 10:00:00'),
 ('2024BTECH002', 3,  'EXPERT',       TRUE,  '2024-08-05 10:00:00'),
 ('2024BTECH002', 4,  'ADVANCED',     TRUE,  '2024-08-05 10:00:00'),
+('2024BTECH002', 24, 'EXPERT',       TRUE,  '2024-08-05 10:00:00'),
 
 -- Chirag Singhal (BTECH 2024) - Mentor in ML and Python
 ('2024BTECH003', 1,  'ADVANCED',     TRUE,  '2024-08-05 10:00:00'),
 ('2024BTECH003', 4,  'EXPERT',       TRUE,  '2024-08-05 10:00:00'),
 
--- Divya Jain (BTECH 2024) - Mentor in React, Flutter
+-- Divya Jain (BTECH 2024) - Mentor in React, Flutter, Dance
 ('2024BTECH004', 3,  'ADVANCED',     TRUE,  '2024-08-05 10:00:00'),
 ('2024BTECH004', 15, 'ADVANCED',     TRUE,  '2024-08-05 10:00:00'),
+('2024BTECH004', 20, 'EXPERT',       TRUE,  '2024-08-05 10:00:00'),
 
 -- Eshan Verma (BTECH 2024) - Mentor in Embedded Systems
 ('2024BTECH005', 16, 'EXPERT',       TRUE,  '2024-08-05 10:00:00'),
 
--- Gauri Khandelwal (BTECH 2025) - Learner & Mentor (Python, DBMS)
+-- Gauri Khandelwal (BTECH 2025) - Learner & Mentor (Python, DBMS, Singing)
 ('2025BTECH007', 1,  'INTERMEDIATE', TRUE,  '2025-08-05 10:00:00'),
 ('2025BTECH007', 2,  'INTERMEDIATE', TRUE,  '2025-08-05 10:00:00'),
+('2025BTECH007', 25, 'ADVANCED',     TRUE,  '2025-08-05 10:00:00'),
 
 -- Harsh Vardhan (BTECH 2025)
 ('2025BTECH008', 4,  'INTERMEDIATE', TRUE,  '2025-08-05 10:00:00'),
@@ -188,31 +203,37 @@ INSERT INTO student_skill (roll_no, skill_id, proficiency_level, can_teach, crea
 ('2025BTECH009', 1,  'INTERMEDIATE', TRUE,  '2025-08-05 10:00:00'),
 ('2025BTECH009', 3,  'BEGINNER',     FALSE, '2025-08-05 10:00:00'),
 
--- Sneha Agarwal (BBA 2024) - Mentor in Accounting & Valuation
+-- Sneha Agarwal (BBA 2024) - Mentor in Accounting, Valuation, Creative Writing
 ('2024BBA001',   10, 'EXPERT',       TRUE,  '2024-08-05 11:00:00'),
 ('2024BBA001',   12, 'ADVANCED',     TRUE,  '2024-08-05 11:00:00'),
 ('2024BBA001',   13, 'ADVANCED',     TRUE,  '2024-08-05 11:00:00'),
+('2024BBA001',   26, 'EXPERT',       TRUE,  '2024-08-05 11:00:00'),
 
--- Tanmay Tiwari (BBA 2024) - Mentor in Digital Marketing
+-- Tanmay Tiwari (BBA 2024) - Mentor in Digital Marketing & Classical Dance
 ('2024BBA002',   11, 'EXPERT',       TRUE,  '2024-08-05 11:00:00'),
 ('2024BBA002',   13, 'ADVANCED',     TRUE,  '2024-08-05 11:00:00'),
+('2024BBA002',   21, 'ADVANCED',     TRUE,  '2024-08-05 11:00:00'),
 
 -- Urvi Saxena (BBA 2025)
 ('2025BBA003',   10, 'INTERMEDIATE', TRUE,  '2025-08-05 11:00:00'),
 ('2025BBA003',   11, 'INTERMEDIATE', FALSE, '2025-08-05 11:00:00'),
 
--- Bharat Bhushan (BDES 2024) - Mentor in UI/UX & Design Thinking
+-- Bharat Bhushan (BDES 2024) - Mentor in UI/UX, Design Thinking, Fine Art Sketching
 ('2024BDES001',  6,  'EXPERT',       TRUE,  '2024-08-05 12:00:00'),
 ('2024BDES001',  7,  'EXPERT',       TRUE,  '2024-08-05 12:00:00'),
 ('2024BDES001',  9,  'ADVANCED',     TRUE,  '2024-08-05 12:00:00'),
+('2024BDES001',  22, 'EXPERT',       TRUE,  '2024-08-05 12:00:00'),
 
--- Chhavi Soni (BDES 2024) - Mentor in 3D Modeling & Graphic Design
+-- Chhavi Soni (BDES 2024) - Mentor in 3D Modeling, Photography, Video Editing
 ('2024BDES002',  8,  'EXPERT',       TRUE,  '2024-08-05 12:00:00'),
 ('2024BDES002',  9,  'EXPERT',       TRUE,  '2024-08-05 12:00:00'),
+('2024BDES002',  23, 'EXPERT',       TRUE,  '2024-08-05 12:00:00'),
+('2024BDES002',  28, 'ADVANCED',     TRUE,  '2024-08-05 12:00:00'),
 
 -- Devvrat Rao (BDES 2025)
 ('2025BDES003',  6,  'INTERMEDIATE', TRUE,  '2025-08-05 12:00:00'),
 ('2025BDES003',  8,  'BEGINNER',     FALSE, '2025-08-05 12:00:00'),
+('2025BDES003',  22, 'ADVANCED',     TRUE,  '2025-08-05 12:00:00'),
 
 -- Freshmen learners
 ('2026BTECH013', 1,  'BEGINNER',     FALSE, '2026-08-05 10:00:00'),
