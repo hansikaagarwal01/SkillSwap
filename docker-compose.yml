@@ -1,0 +1,19 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: skillswap_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: skillswap_root
+      MYSQL_DATABASE: skillswap
+      MYSQL_USER: skillswap
+      MYSQL_PASSWORD: skillswap_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/database/init_docker.sql:/docker-entrypoint-initdb.d/init_docker.sql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+volumes:
+  mysql_data:
