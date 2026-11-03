@@ -1,432 +1,400 @@
 -- ============================================================================
--- SkillSwap JKLU - Realistic Seed Data
--- 34 Students (BTECH, BBA, BDES across 2024, 2025, 2026)
--- 18 Skills, Sessions in all 5 statuses, Reviews, Experiences, Listings
--- Passwords:
---   Admin:   Admin@JKLU2026
---   Student: Student@JKLU2026
+-- SkillSwap JKLU - Authentic Survey Seed Data
+-- Source of Truth: Real Survey Responses (36 Submissions -> 34 Unique Students)
+-- Zero Fabricated Students, Zero Fake Reviews, Zero Fake Sessions
 -- ============================================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE survey_import_audit;
+TRUNCATE TABLE student_desired_skill;
 TRUNCATE TABLE review;
-TRUNCATE TABLE reputation_history;
 TRUNCATE TABLE learning_session;
 TRUNCATE TABLE listing;
 TRUNCATE TABLE experience;
 TRUNCATE TABLE student_skill;
 TRUNCATE TABLE skill;
-TRUNCATE TABLE email_verification_token;
-TRUNCATE TABLE auth_account;
 TRUNCATE TABLE student;
-TRUNCATE TABLE department;
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ----------------------------------------------------------------------------
--- 1. DEPARTMENTS
+-- 1. STUDENTS (34 Authentic Survey Students)
 -- ----------------------------------------------------------------------------
-INSERT INTO department (d_id, name, program) VALUES
-(1, 'Computer Science and Engineering', 'BTECH'),
-(2, 'Artificial Intelligence and Data Science', 'BTECH'),
-(3, 'Electronics and Communication Engineering', 'BTECH'),
-(4, 'Institute of Management', 'BBA'),
-(5, 'Institute of Design', 'BDES');
-
--- ----------------------------------------------------------------------------
--- 2. STUDENTS (34 Students: 18 BTECH, 8 BBA, 8 BDES)
--- ----------------------------------------------------------------------------
-INSERT INTO student (roll_no, name, email, phone, d_id, program, admission_year, reputation_points, created_at) VALUES
--- BTECH 2024 (Seniors)
-('2024BTECH001', 'Aarav Sharma',     'aarav.sharma@jklu.edu.in',     '9829011001', 1, 'BTECH', 2024, 40, '2024-08-01 10:00:00'),
-('2024BTECH002', 'Bhavya Patel',     'bhavya.patel@jklu.edu.in',     '9829011002', 1, 'BTECH', 2024, 50, '2024-08-01 10:05:00'),
-('2024BTECH003', 'Chirag Singhal',   'chirag.singhal@jklu.edu.in',   '9829011003', 2, 'BTECH', 2024, 30, '2024-08-01 10:10:00'),
-('2024BTECH004', 'Divya Jain',       'divya.jain@jklu.edu.in',       NULL,         2, 'BTECH', 2024, 20, '2024-08-01 10:15:00'),
-('2024BTECH005', 'Eshan Verma',      'eshan.verma@jklu.edu.in',      '9829011005', 3, 'BTECH', 2024, 10, '2024-08-01 10:20:00'),
-('2024BTECH006', 'Farhan Ali',       'farhan.ali@jklu.edu.in',       '9829011006', 1, 'BTECH', 2024,  0, '2024-08-01 10:25:00'),
-
--- BTECH 2025 (Juniors)
-('2025BTECH007', 'Gauri Khandelwal', 'gauri.khandelwal@jklu.edu.in', '9829011007', 1, 'BTECH', 2025, 20, '2025-08-01 10:00:00'),
-('2025BTECH008', 'Harsh Vardhan',    'harsh.vardhan@jklu.edu.in',    '9829011008', 2, 'BTECH', 2025, 10, '2025-08-01 10:05:00'),
-('2025BTECH009', 'Isha Meena',       'isha.meena@jklu.edu.in',       NULL,         1, 'BTECH', 2025, 10, '2025-08-01 10:10:00'),
-('2025BTECH010', 'Jayesh Mathur',    'jayesh.mathur@jklu.edu.in',    '9829011010', 3, 'BTECH', 2025,  0, '2025-08-01 10:15:00'),
-('2025BTECH011', 'Kavya Soni',       'kavya.soni@jklu.edu.in',       '9829011011', 1, 'BTECH', 2025,  0, '2025-08-01 10:20:00'),
-('2025BTECH012', 'Lakshya Gupta',    'lakshya.gupta@jklu.edu.in',    '9829011012', 2, 'BTECH', 2025,  0, '2025-08-01 10:25:00'),
-
--- BTECH 2026 (Freshmen)
-('2026BTECH013', 'Manish Purohit',   'manish.purohit@jklu.edu.in',   '9829011013', 1, 'BTECH', 2026,  0, '2026-08-01 10:00:00'),
-('2026BTECH014', 'Nandini Rathore',  'nandini.rathore@jklu.edu.in',  '9829011014', 2, 'BTECH', 2026,  0, '2026-08-01 10:05:00'),
-('2026BTECH015', 'Omkar Joshi',      'omkar.joshi@jklu.edu.in',      '9829011015', 3, 'BTECH', 2026,  0, '2026-08-01 10:10:00'),
-('2026BTECH016', 'Priya Tanwar',     'priya.tanwar@jklu.edu.in',     NULL,         1, 'BTECH', 2026,  0, '2026-08-01 10:15:00'),
-('2026BTECH017', 'Qasim Khan',       'qasim.khan@jklu.edu.in',       '9829011017', 2, 'BTECH', 2026,  0, '2026-08-01 10:20:00'),
-('2026BTECH018', 'Rohit Sen',        'rohit.sen@jklu.edu.in',        NULL,         1, 'BTECH', 2026,  0, '2026-08-01 10:25:00'),
-
--- BBA 2024, 2025, 2026
-('2024BBA001',   'Sneha Agarwal',    'sneha.agarwal@jklu.edu.in',    '9829012001', 4, 'BBA',   2024, 30, '2024-08-01 11:00:00'),
-('2024BBA002',   'Tanmay Tiwari',    'tanmay.tiwari@jklu.edu.in',    '9829012002', 4, 'BBA',   2024, 20, '2024-08-01 11:05:00'),
-('2025BBA003',   'Urvi Saxena',      'urvi.saxena@jklu.edu.in',      '9829012003', 4, 'BBA',   2025, 10, '2025-08-01 11:00:00'),
-('2025BBA004',   'Varun Chopra',     'varun.chopra@jklu.edu.in',     NULL,         4, 'BBA',   2025,  0, '2025-08-01 11:05:00'),
-('2025BBA005',   'Vidhi Mittal',     'vidhi.mittal@jklu.edu.in',     '9829012005', 4, 'BBA',   2025,  0, '2025-08-01 11:10:00'),
-('2026BBA006',   'Yash Shekhawat',   'yash.shekhawat@jklu.edu.in',   '9829012006', 4, 'BBA',   2026,  0, '2026-08-01 11:00:00'),
-('2026BBA007',   'Zoya Siddiqui',    'zoya.siddiqui@jklu.edu.in',    '9829012007', 4, 'BBA',   2026,  0, '2026-08-01 11:05:00'),
-('2026BBA008',   'Ananya Goyal',     'ananya.goyal@jklu.edu.in',     NULL,         4, 'BBA',   2026,  0, '2026-08-01 11:10:00'),
-
--- BDES 2024, 2025, 2026
-('2024BDES001',  'Bharat Bhushan',   'bharat.bhushan@jklu.edu.in',   '9829013001', 5, 'BDES',  2024, 30, '2024-08-01 12:00:00'),
-('2024BDES002',  'Chhavi Soni',      'chhavi.soni@jklu.edu.in',      '9829013002', 5, 'BDES',  2024, 20, '2024-08-01 12:05:00'),
-('2025BDES003',  'Devvrat Rao',      'devvrat.rao@jklu.edu.in',      NULL,         5, 'BDES',  2025, 10, '2025-08-01 12:00:00'),
-('2025BDES004',  'Ekta Rawat',       'ekta.rawat@jklu.edu.in',       '9829013004', 5, 'BDES',  2025,  0, '2025-08-01 12:05:00'),
-('2025BDES005',  'Girish Sharma',    'girish.sharma@jklu.edu.in',    '9829013005', 5, 'BDES',  2025,  0, '2025-08-01 12:10:00'),
-('2026BDES006',  'Himani Gaur',      'himani.gaur@jklu.edu.in',      '9829013006', 5, 'BDES',  2026,  0, '2026-08-01 12:00:00'),
-('2026BDES007',  'Ishaan Dixit',     'ishaan.dixit@jklu.edu.in',     '9829013007', 5, 'BDES',  2026,  0, '2026-08-01 12:05:00'),
-('2026BDES008',  'Jiya Chauhan',     'jiya.chauhan@jklu.edu.in',     NULL,         5, 'BDES',  2026,  0, '2026-08-01 12:10:00');
+INSERT INTO student (roll_no, name, email, phone, program, admission_year, reputation_points, password_hash, account_status, email_verified) VALUES
+('2025BBA106', 'Shreshtha sharma', 'shreshthasharma@jklu.edu.in', NULL, 'BBA', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH002', 'Aalap Goswami', 'aalapgoswami@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH005', 'Abhyudya Sharma', 'abhyudyasharma@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH013', 'Arunil Jain', 'aruniljain@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH017', 'Aayushi Kaushik', 'aayushikaushik@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH018', 'BHANU PRATAP', 'bhanupratapsinghkhangarot@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH022', 'Dhanyashree Sen', 'dhanyashreesen@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH023', 'Dhruv Tyagi', 'dhruvkumar@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH025', 'Garvit', 'garvitagrawal@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH027', 'Hansika Agarwal', 'hansikaagarwal@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH028', 'Heramb Sharma', 'herambsharma@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH032', 'Ishvit Bhardwaj', 'ishvitbhardwaj@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH035', 'Medha Kumari', 'medhakumari@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH053', 'Sudhi Chaurasia', 'sudhichaurasia@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH057', 'Vaishali agarwal', 'vaishaliagarwal@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH099', 'Raghav sharma', 'raghavsharma2025@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH100', 'Raghuraj Jangid', 'raghurajjangid@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH105', 'Rudrapal Singh Shekhawat', 'rudrapalsinghshekhawat@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH116', 'Tanishq', 'tanishqdaiya@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH156', 'Naina Dayaramani', 'nainadayaramani@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH228', 'Shivam Srivastava', 'shivamsrivastava@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2025BTECH273', 'Raghuraj Singh Shekhawat', 'raghurajsinghshekhawat@jklu.edu.in', NULL, 'BTECH', 2025, 0, NULL, 'UNVERIFIED', FALSE),
+('2026BBA004', 'Agam jain', 'agamjain@jklu.edu.in', NULL, 'BBA', 2026, 0, NULL, 'UNVERIFIED', FALSE),
+('2026BBA037', 'Gauransh sharma', 'gauranshsharma@jklu.edu.in', NULL, 'BBA', 2026, 0, NULL, 'UNVERIFIED', FALSE),
+('2026BBA050', 'HIRANAND NAINWANI', 'hiranandnainwani@jklu.edu.in', NULL, 'BBA', 2026, 0, NULL, 'UNVERIFIED', FALSE),
+('2026BBA079', 'Mohit Pandit', 'mohitpandit@jklu.edu.in', NULL, 'BBA', 2026, 0, NULL, 'UNVERIFIED', FALSE),
+('2026BBA106', 'Ashutosh Gupta', 'ashutoshgupta2026@jklu.edu.in', NULL, 'BBA', 2026, 0, NULL, 'UNVERIFIED', FALSE),
+('2026BTECH108', 'Rahi Agarwal', 'rahiagarwal@jklu.edu.in', NULL, 'BTECH', 2026, 0, NULL, 'UNVERIFIED', FALSE),
+('2026BTECH147', 'Harshit Adhikari', 'harshitadhikari@jklu.edu.in', NULL, 'BTECH', 2026, 0, NULL, 'UNVERIFIED', FALSE),
+('2026BTECH220', 'Jahanvi', 'jahanvihada@jklu.edu.in', NULL, 'BTECH', 2026, 0, NULL, 'UNVERIFIED', FALSE),
+('2026BTECH275', 'Amrutha Varsha', 'chakaliamruthavarsha@jklu.edu.in', NULL, 'BTECH', 2026, 0, NULL, 'UNVERIFIED', FALSE),
+('2026BTECH286', 'jahanvi singh', 'jahanvisingh@jklu.edu.in', NULL, 'BTECH', 2026, 0, NULL, 'UNVERIFIED', FALSE),
+('2026BTECH294', 'Mahi Pal', 'mahipal@jklu.edu.in', NULL, 'BTECH', 2026, 0, NULL, 'UNVERIFIED', FALSE),
+('2026BTECH300', 'Nayanshi Jain', 'nayanshijain@jklu.edu.in', NULL, 'BTECH', 2026, 0, NULL, 'UNVERIFIED', FALSE);
 
 -- ----------------------------------------------------------------------------
--- 3. AUTH ACCOUNTS (Admin + Students)
--- Passwords:
---   Admin:   $argon2id$v=19$m=65536,t=3,p=4$X18pS7PfX70O2kY6sbzyaQ$WutVtOKXHcuFjniJ/L8cyzVuA+d8JF73bXJvnBKWUs4  (Admin@JKLU2026)
---   Student: $argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs  (Student@JKLU2026)
+-- 2. SKILLS (102 Canonical Normalized Skills from Real Survey)
 -- ----------------------------------------------------------------------------
-INSERT INTO auth_account (roll_no, password_hash, role, account_status, email_verified, token_version, created_at) VALUES
-('2024BTECH001', '$argon2id$v=19$m=65536,t=3,p=4$X18pS7PfX70O2kY6sbzyaQ$WutVtOKXHcuFjniJ/L8cyzVuA+d8JF73bXJvnBKWUs4', 'ADMIN',   'ACTIVE',           TRUE,  1, '2024-08-01 10:00:00'),
-('2024BTECH002', '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2024-08-01 10:05:00'),
-('2024BTECH003', '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2024-08-01 10:10:00'),
-('2024BTECH004', '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2024-08-01 10:15:00'),
-('2024BTECH005', '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2024-08-01 10:20:00'),
-('2024BTECH006', '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2024-08-01 10:25:00'),
-('2025BTECH007', '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2025-08-01 10:00:00'),
-('2025BTECH008', '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2025-08-01 10:05:00'),
-('2025BTECH009', '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2025-08-01 10:10:00'),
-('2025BTECH010', '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2025-08-01 10:15:00'),
-('2025BTECH011', '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2025-08-01 10:20:00'),
-('2025BTECH012', '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2025-08-01 10:25:00'),
-('2026BTECH013', '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2026-08-01 10:00:00'),
-('2026BTECH014', '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2026-08-01 10:05:00'),
-('2026BTECH015', '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2026-08-01 10:10:00'),
-('2026BTECH016', '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'UNVERIFIED',       FALSE, 1, '2026-08-01 10:15:00'),
-('2026BTECH017', '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'PENDING_APPROVAL', TRUE,  1, '2026-08-01 10:20:00'),
-('2026BTECH018', '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'SUSPENDED',        TRUE,  1, '2026-08-01 10:25:00'),
-('2024BBA001',   '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2024-08-01 11:00:00'),
-('2024BBA002',   '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2024-08-01 11:05:00'),
-('2025BBA003',   '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2025-08-01 11:00:00'),
-('2025BBA004',   '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2025-08-01 11:05:00'),
-('2025BBA005',   '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2025-08-01 11:10:00'),
-('2026BBA006',   '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2026-08-01 11:00:00'),
-('2026BBA007',   '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2026-08-01 11:05:00'),
-('2026BBA008',   '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2026-08-01 11:10:00'),
-('2024BDES001',  '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2024-08-01 12:00:00'),
-('2024BDES002',  '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2024-08-01 12:05:00'),
-('2025BDES003',  '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2025-08-01 12:00:00'),
-('2025BDES004',  '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2025-08-01 12:05:00'),
-('2025BDES005',  '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2025-08-01 12:10:00'),
-('2026BDES006',  '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2026-08-01 12:00:00'),
-('2026BDES007',  '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2026-08-01 12:05:00'),
-('2026BDES008',  '$argon2id$v=19$m=65536,t=3,p=4$MAFbqGsSpdi1Tg8JIUgmCQ$wWhJfbCG6IdioctbUzIe2bPrV1f6cr+viOeGeM5IRNs', 'STUDENT', 'ACTIVE',           TRUE,  1, '2026-08-01 12:10:00');
-
--- ----------------------------------------------------------------------------
--- 4. EMAIL VERIFICATION TOKENS
--- ----------------------------------------------------------------------------
-INSERT INTO email_verification_token (token_id, roll_no, token_hash, expires_at, used_at, created_at) VALUES
-(1, '2026BTECH016', 'a7f3484f932849208a8f89e2837498c8723487c8237498273498237498237498', DATE_ADD(NOW(), INTERVAL 24 HOUR), NULL, NOW()),
-(2, '2026BTECH017', 'b8e4595e843950319b9f90f3948509d9834598d9348509384509348509348509', DATE_ADD(NOW(), INTERVAL 24 HOUR), NOW(), DATE_SUB(NOW(), INTERVAL 1 HOUR));
-
--- ----------------------------------------------------------------------------
--- 5. SKILLS (18 Skills across Computer Science, Design, Business, etc.)
--- ----------------------------------------------------------------------------
-INSERT INTO skill (skill_id, name, category, description, created_at) VALUES
-(1,  'Python Programming',           'Computer Science', 'Modern Python 3, object-oriented principles, and scripting.', '2024-08-01 09:00:00'),
-(2,  'Database Management Systems',  'Computer Science', 'Relational design, normalization, SQL, indexing, transactions.', '2024-08-01 09:00:00'),
-(3,  'React & Web Development',       'Computer Science', 'Frontend SPA architecture, React hooks, state management.', '2024-08-01 09:00:00'),
-(4,  'Machine Learning',             'Data Science',     'Supervised and unsupervised models, evaluation metrics, scikit-learn.', '2024-08-01 09:00:00'),
-(5,  'Data Structures & Algorithms', 'Computer Science', 'Arrays, linked lists, trees, graphs, sorting, dynamic programming.', '2024-08-01 09:00:00'),
-(6,  'UI/UX Wireframing & Prototyping', 'Design',       'Figma component libraries, wireframing, user persona mapping.', '2024-08-01 09:00:00'),
-(7,  'Design Thinking & Research',   'Design',           'User research, empathy mapping, ideation, iterative usability testing.', '2024-08-01 09:00:00'),
-(8,  '3D Modeling & CAD',            'Design',           'SolidWorks, Blender 3D asset pipeline, spatial modeling.', '2024-08-01 09:00:00'),
-(9,  'Graphic Design & Typography',  'Design',           'Visual balance, typography hierarchy, Adobe Illustrator, branding.', '2024-08-01 09:00:00'),
-(10, 'Financial Accounting',         'Business',         'Balance sheets, ledger bookkeeping, corporate cash flow statements.', '2024-08-01 09:00:00'),
-(11, 'Digital Marketing Strategy',   'Business',         'SEO, conversion funnels, SEM, social analytics, campaign ROI.', '2024-08-01 09:00:00'),
-(12, 'Business Valuation & Pitching','Business',         'Startup decks, DCF modeling, venture capital presentation.', '2024-08-01 09:00:00'),
-(13, 'Public Speaking & Debate',     'Communication',    'Persuasion techniques, impromptu speeches, parliamentary debate.', '2024-08-01 09:00:00'),
-(14, 'Academic Research & Writing',  'Communication',    'LaTeX publication, IEEE formatting, research synthesis.', '2024-08-01 09:00:00'),
-(15, 'Mobile Development (Flutter)', 'Computer Science', 'Cross-platform mobile apps using Dart and Flutter framework.', '2024-08-01 09:00:00'),
-(16, 'Embedded Systems & Arduino',   'Electronics',      'Microcontroller programming, sensor integration, C/C++.', '2024-08-01 09:00:00'),
-(17, 'Rust Systems Programming',     'Computer Science', 'Memory safety without garbage collection, borrow checker.', '2024-08-01 09:00:00'), -- Unused in sessions
-(18, 'Quantitative Aptitude',        'General',          'Logical reasoning, permutations, probability for placements.', '2024-08-01 09:00:00'), -- Unused in sessions
-(19, 'Acoustic & Electric Guitar',             'Music & Performing Arts', 'Chords, strumming patterns, fingerpicking techniques, tabs, and solo improvisation.', '2024-08-01 09:00:00'),
-(20, 'Western & Contemporary Dance',           'Dance & Performing Arts', 'Hip-hop choreography, urban grooves, contemporary body isolation, and rhythm training.', '2024-08-01 09:00:00'),
-(21, 'Classical Dance (Kathak & Bharatanatyam)', 'Dance & Performing Arts', 'Classical mudras, rhythmic footwork (tatkar), abhinaya expressions, and traditional thumri.', '2024-08-01 09:00:00'),
-(22, 'Sketching & Acrylic Painting',           'Fine Arts & Visual Media', 'Pencil shading, facial proportions, perspective, canvas preparation, and acrylic mixing.', '2024-08-01 09:00:00'),
-(23, 'Digital Photography & Lightroom',        'Fine Arts & Visual Media', 'DSLR exposure triangle, framing, golden hour portraits, and Adobe Lightroom CC color grading.', '2024-08-01 09:00:00'),
-(24, 'Music Production & Beatmaking',          'Music & Performing Arts', 'FL Studio, Ableton Live, MIDI arrangement, beat programming, and sound synthesis.', '2024-08-01 09:00:00'),
-(25, 'Vocal Music & Singing',                  'Music & Performing Arts', 'Vocal warmups, pitch accuracy, breathing techniques, riyaz, and acoustic singing.', '2024-08-01 09:00:00'),
-(26, 'Creative Writing & Spoken Word',         'Literary & Creative Arts', 'Poetry composition, metaphor crafting, storytelling arcs, and open-mic stage performance.', '2024-08-01 09:00:00'),
-(27, 'Chess Strategy & Tactics',               'Sports & Strategy',        'Opening principles, pin/fork tactics, pawn structures, endgame mastery, and time control.', '2024-08-01 09:00:00'),
-(28, 'Video Editing & Cinematography',         'Fine Arts & Visual Media', 'Premiere Pro / DaVinci Resolve editing, cinematic transitions, color correction, and audio cleanup.', '2024-08-01 09:00:00');
-
--- ----------------------------------------------------------------------------
--- 6. STUDENT SKILLS (Mappings with proficiency and can_teach flag)
--- ----------------------------------------------------------------------------
-INSERT INTO student_skill (roll_no, skill_id, proficiency_level, can_teach, created_at) VALUES
--- Aarav Sharma (BTECH 2024) - Mentor in Python, DBMS, DSA, Guitar, Chess
-('2024BTECH001', 1,  'EXPERT',       TRUE,  '2024-08-05 10:00:00'),
-('2024BTECH001', 2,  'EXPERT',       TRUE,  '2024-08-05 10:00:00'),
-('2024BTECH001', 5,  'ADVANCED',     TRUE,  '2024-08-05 10:00:00'),
-('2024BTECH001', 19, 'ADVANCED',     TRUE,  '2024-08-05 10:00:00'),
-('2024BTECH001', 27, 'EXPERT',       TRUE,  '2024-08-05 10:00:00'),
-
--- Bhavya Patel (BTECH 2024) - Mentor in Python, React, ML, Music Production
-('2024BTECH002', 1,  'EXPERT',       TRUE,  '2024-08-05 10:00:00'),
-('2024BTECH002', 3,  'EXPERT',       TRUE,  '2024-08-05 10:00:00'),
-('2024BTECH002', 4,  'ADVANCED',     TRUE,  '2024-08-05 10:00:00'),
-('2024BTECH002', 24, 'EXPERT',       TRUE,  '2024-08-05 10:00:00'),
-
--- Chirag Singhal (BTECH 2024) - Mentor in ML and Python
-('2024BTECH003', 1,  'ADVANCED',     TRUE,  '2024-08-05 10:00:00'),
-('2024BTECH003', 4,  'EXPERT',       TRUE,  '2024-08-05 10:00:00'),
-
--- Divya Jain (BTECH 2024) - Mentor in React, Flutter, Dance
-('2024BTECH004', 3,  'ADVANCED',     TRUE,  '2024-08-05 10:00:00'),
-('2024BTECH004', 15, 'ADVANCED',     TRUE,  '2024-08-05 10:00:00'),
-('2024BTECH004', 20, 'EXPERT',       TRUE,  '2024-08-05 10:00:00'),
-
--- Eshan Verma (BTECH 2024) - Mentor in Embedded Systems
-('2024BTECH005', 16, 'EXPERT',       TRUE,  '2024-08-05 10:00:00'),
-
--- Gauri Khandelwal (BTECH 2025) - Learner & Mentor (Python, DBMS, Singing)
-('2025BTECH007', 1,  'INTERMEDIATE', TRUE,  '2025-08-05 10:00:00'),
-('2025BTECH007', 2,  'INTERMEDIATE', TRUE,  '2025-08-05 10:00:00'),
-('2025BTECH007', 25, 'ADVANCED',     TRUE,  '2025-08-05 10:00:00'),
-
--- Harsh Vardhan (BTECH 2025)
-('2025BTECH008', 4,  'INTERMEDIATE', TRUE,  '2025-08-05 10:00:00'),
-('2025BTECH008', 5,  'INTERMEDIATE', FALSE, '2025-08-05 10:00:00'),
-
--- Isha Meena (BTECH 2025)
-('2025BTECH009', 1,  'INTERMEDIATE', TRUE,  '2025-08-05 10:00:00'),
-('2025BTECH009', 3,  'BEGINNER',     FALSE, '2025-08-05 10:00:00'),
-
--- Sneha Agarwal (BBA 2024) - Mentor in Accounting, Valuation, Creative Writing
-('2024BBA001',   10, 'EXPERT',       TRUE,  '2024-08-05 11:00:00'),
-('2024BBA001',   12, 'ADVANCED',     TRUE,  '2024-08-05 11:00:00'),
-('2024BBA001',   13, 'ADVANCED',     TRUE,  '2024-08-05 11:00:00'),
-('2024BBA001',   26, 'EXPERT',       TRUE,  '2024-08-05 11:00:00'),
-
--- Tanmay Tiwari (BBA 2024) - Mentor in Digital Marketing & Classical Dance
-('2024BBA002',   11, 'EXPERT',       TRUE,  '2024-08-05 11:00:00'),
-('2024BBA002',   13, 'ADVANCED',     TRUE,  '2024-08-05 11:00:00'),
-('2024BBA002',   21, 'ADVANCED',     TRUE,  '2024-08-05 11:00:00'),
-
--- Urvi Saxena (BBA 2025)
-('2025BBA003',   10, 'INTERMEDIATE', TRUE,  '2025-08-05 11:00:00'),
-('2025BBA003',   11, 'INTERMEDIATE', FALSE, '2025-08-05 11:00:00'),
-
--- Bharat Bhushan (BDES 2024) - Mentor in UI/UX, Design Thinking, Fine Art Sketching
-('2024BDES001',  6,  'EXPERT',       TRUE,  '2024-08-05 12:00:00'),
-('2024BDES001',  7,  'EXPERT',       TRUE,  '2024-08-05 12:00:00'),
-('2024BDES001',  9,  'ADVANCED',     TRUE,  '2024-08-05 12:00:00'),
-('2024BDES001',  22, 'EXPERT',       TRUE,  '2024-08-05 12:00:00'),
-
--- Chhavi Soni (BDES 2024) - Mentor in 3D Modeling, Photography, Video Editing
-('2024BDES002',  8,  'EXPERT',       TRUE,  '2024-08-05 12:00:00'),
-('2024BDES002',  9,  'EXPERT',       TRUE,  '2024-08-05 12:00:00'),
-('2024BDES002',  23, 'EXPERT',       TRUE,  '2024-08-05 12:00:00'),
-('2024BDES002',  28, 'ADVANCED',     TRUE,  '2024-08-05 12:00:00'),
-
--- Devvrat Rao (BDES 2025)
-('2025BDES003',  6,  'INTERMEDIATE', TRUE,  '2025-08-05 12:00:00'),
-('2025BDES003',  8,  'BEGINNER',     FALSE, '2025-08-05 12:00:00'),
-('2025BDES003',  22, 'ADVANCED',     TRUE,  '2025-08-05 12:00:00'),
-
--- Freshmen learners
-('2026BTECH013', 1,  'BEGINNER',     FALSE, '2026-08-05 10:00:00'),
-('2026BTECH013', 2,  'BEGINNER',     FALSE, '2026-08-05 10:00:00'),
-('2026BTECH014', 3,  'BEGINNER',     FALSE, '2026-08-05 10:00:00'),
-('2026BBA006',   10, 'BEGINNER',     FALSE, '2026-08-05 11:00:00'),
-('2026BDES006',  6,  'BEGINNER',     FALSE, '2026-08-05 12:00:00');
--- Note: 2026BTECH018 has NO skills recorded (tested in edge cases)
+INSERT INTO skill (skill_id, name, category, description) VALUES
+(1, 'Handmade Jewellery', 'Arts & Crafts', 'Artisanal handcrafted jewelry creation'),
+(2, 'C++', 'Programming', 'Object-oriented and generic systems programming in C++'),
+(3, 'Guitar', 'Music & Performing Arts', 'Acoustic and electric guitar techniques and chords'),
+(4, 'DSA', 'Computer Science', 'Data structures and algorithm design & analysis'),
+(5, 'Web Development', 'Web Development', 'Frontend and backend web architecture and design'),
+(6, 'Crochet', 'Arts & Crafts', 'Yarn craft and crochet patterns'),
+(7, 'Writing', 'Communication', 'Academic writing, essay structure, and written narrative'),
+(8, 'Magic Tricks', 'Hobbies & Entertainment', 'Sleight-of-hand card magic and performance illusions'),
+(9, 'Non-Academic Skills (Unspecified)', 'General Non-Academic', 'General co-curricular skills'),
+(10, 'Academic and Non-Academic Skills', 'General Skills', 'Broad academic and co-curricular skills'),
+(11, 'Hybrid Athletics', 'Sports & Fitness', 'Endurance, functional strength, and multi-sport training'),
+(12, 'Football', 'Sports & Fitness', 'Association football tactics, passing, and physical agility'),
+(13, 'Vibe Coding', 'Computer Science', 'Intuitive, rapid iterative coding and prototyping'),
+(14, 'Basketball', 'Sports & Fitness', 'Basketball court mechanics, dribbling, and shooting'),
+(15, 'Logical Thinking', 'Soft Skills', 'Formal logic and deductive argumentation'),
+(16, 'Communication', 'Soft Skills', 'Interpersonal verbal and written academic communication'),
+(17, 'Mathematics', 'Mathematics', 'Applied college mathematics and analytical reasoning'),
+(18, 'Discrete Mathematics', 'Mathematics', 'Graph theory, combinatorics, and discrete structures'),
+(19, 'Badminton', 'Sports & Fitness', 'Racket control, court agility, and competitive drills'),
+(20, 'SQL', 'Databases', 'Relational database querying, schema design, and manipulation'),
+(21, 'Python', 'Programming', 'Core Python programming, scripting, and packages'),
+(22, 'Quantitative Finance', 'Finance & Management', 'Mathematical modeling of financial assets'),
+(23, 'AI', 'Artificial Intelligence', 'Artificial intelligence concepts and neural networks'),
+(24, 'Dance', 'Music & Performing Arts', 'Choreography, rhythm, and expressive dance styles'),
+(25, 'Baking', 'Lifestyle & Culinary', 'Pastry, bread, and oven baking techniques'),
+(26, 'C', 'Programming', 'Procedural systems programming in C'),
+(27, 'Logical Problem-Solving', 'Soft Skills', 'Deductive reasoning and root-cause analysis'),
+(28, 'Programming', 'Computer Science', 'Software engineering and programmatic problem solving'),
+(29, 'Problem-Solving', 'Soft Skills', 'Structured critical thinking and analytical resolution'),
+(30, 'Automation', 'Artificial Intelligence', 'Process automation and programmatic workflows'),
+(31, 'Public Speaking', 'Soft Skills', 'Stage presence, oratory, and rhetoric'),
+(32, 'Project Management', 'Management & Soft Skills', 'Agile planning, deliverables tracking, and milestones'),
+(33, 'Backend Development', 'Web Development', 'Server-side logic, APIs, and microservices'),
+(34, 'Cloud Computing', 'Cloud & DevOps', 'Cloud infrastructure, virtualization, and services'),
+(35, 'Coding', 'Computer Science', 'General algorithmic problem-solving and software coding'),
+(36, 'Sketching', 'Arts & Crafts', 'Hand-drawn graphite and pencil sketching'),
+(37, 'Painting', 'Arts & Crafts', 'Acrylic, watercolor, and oil canvas painting'),
+(38, 'Cooking', 'Lifestyle & Culinary', 'Culinary preparation, flavors, and meal recipes'),
+(39, 'C Programming', 'Programming', 'Core C syntax, memory management, and pointers'),
+(40, 'Teamwork', 'Management & Soft Skills', 'Collaborative project coordination and peer dynamics'),
+(41, 'Drums', 'Music & Performing Arts', 'Drum kit rhythms, meter, and percussion'),
+(42, 'Full-Stack Development', 'Web Development', 'End-to-end full-stack web application development'),
+(43, 'Databases', 'Databases', 'Relational and document database technologies'),
+(44, 'Leadership', 'Management & Soft Skills', 'Team direction, initiative, and conflict resolution'),
+(45, 'Drumming', 'Music & Performing Arts', 'Percussion techniques and tempo control'),
+(46, 'Singing', 'Music & Performing Arts', 'Vocal training, pitch control, and melodies'),
+(47, 'DBMS', 'Databases', 'Database management systems concepts and normalization'),
+(48, 'Computer Architecture', 'Computer Science', 'CPU pipeline, memory hierarchy, and machine instructions'),
+(49, 'AI Tools', 'Artificial Intelligence', 'Practical utilization of generative AI tooling'),
+(50, 'Prompt Design', 'Artificial Intelligence', 'Context crafting and structured prompt engineering'),
+(51, 'Behavioral Psychology', 'Social Sciences', 'Cognitive patterns and human behavioral dynamics'),
+(52, 'Academic Skills', 'General Academic', 'Core university academic foundation skills'),
+(53, 'Music', 'Music & Performing Arts', 'Music theory, performance, and appreciation'),
+(54, 'Cultural Performance', 'Music & Performing Arts', 'Stage presentation and cultural art forms'),
+(55, 'Excel', 'Productivity & Tools', 'Advanced spreadsheet functions, pivot tables, and analysis'),
+(56, 'Prompt Engineering', 'Artificial Intelligence', 'Advanced prompt techniques and LLM steering'),
+(57, 'Academic Skills (Unspecified)', 'General Academic', 'General academic domain skills'),
+(58, 'Non-Academic Skills', 'General Non-Academic', 'Extracurricular and life skills'),
+(59, 'Digital Marketing', 'Marketing', 'SEO, content strategies, and social campaign marketing'),
+(60, 'Networking', 'Management & Soft Skills', 'Professional and campus community relationship building'),
+(61, 'Social Skills', 'Soft Skills', 'Networking, emotional intelligence, and interpersonal skills'),
+(62, 'Persuasion', 'Soft Skills', 'Constructive argumentation and persuasive presentation'),
+(63, 'Creativity', 'Soft Skills', 'Innovative ideation and aesthetic originality'),
+(64, 'AI/ML', 'Artificial Intelligence', 'Applied machine learning algorithms and inference'),
+(65, 'App Development', 'Software Engineering', 'Mobile application design and engineering'),
+(66, 'Negotiation', 'Management & Soft Skills', 'Mutual benefit bargaining and consensus building'),
+(67, 'Time Management', 'Management & Soft Skills', 'Schedule optimization, focus, and deadline adherence'),
+(68, 'Business Skills', 'Management & Soft Skills', 'Commercial awareness and campus enterprise acumen'),
+(69, 'Decision-Making', 'Management & Soft Skills', 'Strategic evaluation under uncertainty'),
+(70, 'Stock Market Analysis', 'Finance & Management', 'Technical and fundamental securities analysis'),
+(71, 'RTL Design', 'Electronics & Hardware', 'Register-transfer level digital hardware design'),
+(72, 'Embedded Systems', 'Electronics & Hardware', 'Microcontrollers and embedded hardware integration'),
+(73, 'Nanotechnology Engineering', 'Engineering', 'Nanoscale engineering and materials design'),
+(74, 'Management', 'Management & Soft Skills', 'Organizational workflow and resource coordination'),
+(75, 'Additional Technology Skills', 'General Technology', 'Broad modern software utilities and platforms'),
+(76, 'French', 'Languages', 'Introductory French conversation and grammar'),
+(77, 'History', 'Humanities', 'Historical analysis and timeline perspectives'),
+(78, 'Grappling', 'Sports & Fitness', 'Combat submission grappling and defensive holds'),
+(79, 'Systems Programming', 'Systems Engineering', 'Low-level system software development'),
+(80, 'OS/Kernel Development', 'Systems Engineering', 'Operating systems architecture and kernel mechanics'),
+(81, 'Video Editing', 'Design & Media', 'Timeline editing, transitions, and audio-video grading'),
+(82, 'Musical Instruments', 'Music & Performing Arts', 'Instrumental practice and harmony'),
+(83, 'Canva', 'Design & Media', 'Visual design, posters, and presentation decks via Canva'),
+(84, 'PowerPoint', 'Productivity & Tools', 'Professional executive presentation design in PowerPoint'),
+(85, 'Research', 'Academic Skills', 'Academic literature review, methodologies, and citations'),
+(86, 'Creative Thinking', 'Soft Skills', 'Lateral thinking and out-of-the-box synthesis'),
+(87, 'Advanced Python', 'Programming', 'Metaclasses, concurrency, and advanced libraries in Python'),
+(88, 'Graphic Design', 'Design & Media', 'Visual branding, typography, and vector illustration'),
+(89, 'UI/UX', 'Design & Media', 'User interface ergonomics and user experience workflows'),
+(90, 'React', 'Web Development', 'Component-based frontend UI development'),
+(91, 'Node.js', 'Web Development', 'Asynchronous JavaScript backend server runtime'),
+(92, 'Tailwind CSS', 'Web Development', 'Utility-first CSS framework for modern responsive UI'),
+(93, 'AI Automation', 'Artificial Intelligence', 'Automating workflows with LLMs and agents'),
+(94, 'UI/Creative Design', 'Design & Media', 'Creative UI layouts and modern digital design aesthetics'),
+(95, 'Freelancing', 'Career Development', 'Client pitching, project delivery, and independent consulting'),
+(96, 'Event Management', 'Management & Soft Skills', 'College festival and workshop event organization'),
+(97, 'Presentations', 'Productivity & Tools', 'Slide composition and academic speaking decks'),
+(98, 'Financial Modelling', 'Finance & Management', 'Valuation models and financial forecasting in spreadsheets'),
+(99, 'Data Analytics', 'Data Science', 'Statistical data analysis, visualization, and insights'),
+(100, 'Sales', 'Marketing & Sales', 'Customer discovery and ethical sales closing'),
+(101, 'AI Startup Building', 'Entrepreneurship', 'Founding and scaling AI-driven ventures'),
+(102, 'Presentation Design', 'Productivity & Tools', 'Structured slide typography, themes, and narrative decks');
 
 -- ----------------------------------------------------------------------------
--- 7. LEARNING SESSIONS (All 5 statuses, past and future, credit_cost = 0)
+-- 3. STUDENT_SKILL (89 Current Skills Possessed by Students)
 -- ----------------------------------------------------------------------------
-INSERT INTO learning_session (session_id, mentor_roll_no, learner_roll_no, skill_id, topic, mode, scheduled_at, meeting_link, status, credit_cost, created_at, updated_at) VALUES
--- COMPLETED SESSIONS (25 completed sessions across mentors)
--- Mentor: Aarav Sharma (2024BTECH001) - 4 completed
-(1,  '2024BTECH001', '2025BTECH007', 1,  'Advanced Python Generators & Decorators', 'ONLINE',  '2025-09-10 16:00:00', 'https://meet.google.com/jkl-u-demo1', 'COMPLETED', 0, '2025-09-08 10:00:00', '2025-09-10 17:30:00'),
-(2,  '2024BTECH001', '2025BTECH008', 2,  'Relational Normalization: 1NF to BCNF',   'OFFLINE', '2025-09-15 15:00:00', NULL,                                  'COMPLETED', 0, '2025-09-12 11:00:00', '2025-09-15 16:30:00'),
-(3,  '2024BTECH001', '2026BTECH013', 1,  'Python OOP Fundamentals',                'ONLINE',  '2026-08-20 17:00:00', 'https://meet.google.com/jkl-u-demo3', 'COMPLETED', 0, '2026-08-18 09:00:00', '2026-08-20 18:00:00'),
-(4,  '2024BTECH001', '2026BTECH014', 5,  'Binary Search and Two Pointer Approach',  'ONLINE',  '2026-09-05 16:00:00', 'https://meet.google.com/jkl-u-demo4', 'COMPLETED', 0, '2026-09-02 12:00:00', '2026-09-05 17:15:00'),
-
--- Mentor: Bhavya Patel (2024BTECH002) - 5 completed
-(5,  '2024BTECH002', '2025BTECH009', 3,  'Building Component Systems in React',     'ONLINE',  '2025-10-02 18:00:00', 'https://meet.google.com/jkl-u-demo5', 'COMPLETED', 0, '2025-09-30 14:00:00', '2025-10-02 19:30:00'),
-(6,  '2024BTECH002', '2025BTECH010', 1,  'Data Analysis with Pandas',              'OFFLINE', '2025-10-12 14:00:00', NULL,                                  'COMPLETED', 0, '2025-10-08 10:00:00', '2025-10-12 15:30:00'),
-(7,  '2024BTECH002', '2026BTECH013', 3,  'State Management with Zustand and Redux', 'ONLINE',  '2026-08-25 15:00:00', 'https://meet.google.com/jkl-u-demo7', 'COMPLETED', 0, '2026-08-22 11:00:00', '2026-08-25 16:30:00'),
-(8,  '2024BTECH002', '2026BTECH015', 4,  'Linear Regression and Gradient Descent',  'ONLINE',  '2026-09-10 17:00:00', 'https://meet.google.com/jkl-u-demo8', 'COMPLETED', 0, '2026-09-07 10:00:00', '2026-09-10 18:30:00'),
-(9,  '2024BTECH002', '2024BDES001',  3,  'CSS Grid & Tailwind for Product Designers','ONLINE', '2026-09-18 16:00:00', 'https://meet.google.com/jkl-u-demo9', 'COMPLETED', 0, '2026-09-15 09:00:00', '2026-09-18 17:15:00'),
-
--- Mentor: Chirag Singhal (2024BTECH003) - 3 completed
-(10, '2024BTECH003', '2025BTECH008', 4,  'Decision Trees and Random Forests',       'ONLINE',  '2025-11-05 17:00:00', 'https://meet.google.com/jkl-u-dem10', 'COMPLETED', 0, '2025-11-02 10:00:00', '2025-11-05 18:30:00'),
-(11, '2024BTECH003', '2025BTECH011', 4,  'Neural Networks from Scratch in NumPy',   'ONLINE',  '2025-11-20 16:00:00', 'https://meet.google.com/jkl-u-dem11', 'COMPLETED', 0, '2025-11-17 14:00:00', '2025-11-20 17:30:00'),
-(12, '2024BTECH003', '2026BTECH017', 1,  'Python Automation & Web Scraping',       'OFFLINE', '2026-09-12 11:00:00', NULL,                                  'COMPLETED', 0, '2026-09-09 16:00:00', '2026-09-12 12:30:00'),
-
--- Mentor: Divya Jain (2024BTECH004) - 2 completed
-(13, '2024BTECH004', '2025BTECH012', 3,  'React Router and Dynamic Routing',        'ONLINE',  '2025-11-12 15:00:00', 'https://meet.google.com/jkl-u-dem13', 'COMPLETED', 0, '2025-11-09 11:00:00', '2025-11-12 16:30:00'),
-(14, '2024BTECH004', '2026BTECH014', 15, 'Flutter Widget Lifecycle and Navigation','ONLINE',  '2026-09-15 14:00:00', 'https://meet.google.com/jkl-u-dem14', 'COMPLETED', 0, '2026-09-12 10:00:00', '2026-09-15 15:30:00'),
-
--- Mentor: Eshan Verma (2024BTECH005) - 1 completed
-(15, '2024BTECH005', '2026BTECH015', 16, 'Interfacing Sensors with Arduino via I2C','OFFLINE','2026-09-22 15:00:00', NULL,                                  'COMPLETED', 0, '2026-09-18 10:00:00', '2026-09-22 16:30:00'),
-
--- Mentor: Gauri Khandelwal (2025BTECH007) - 2 completed
--- Note: Gauri was learner in session 1, and mentor in session 16 & 17! (Both mentor & learner in completed sessions)
-(16, '2025BTECH007', '2026BTECH013', 1,  'Python String Manipulation & Regex',      'ONLINE',  '2026-09-20 18:00:00', 'https://meet.google.com/jkl-u-dem16', 'COMPLETED', 0, '2026-09-17 12:00:00', '2026-09-20 19:30:00'),
-(17, '2025BTECH007', '2026BTECH016', 2,  'SQL Joins and Aggregation Deep Dive',     'ONLINE',  '2026-09-28 17:00:00', 'https://meet.google.com/jkl-u-dem17', 'COMPLETED', 0, '2026-09-25 15:00:00', '2026-09-28 18:30:00'),
-
--- Mentor: Harsh Vardhan (2025BTECH008) - 1 completed
-(18, '2025BTECH008', '2026BTECH017', 4,  'Clustering with K-Means in Python',       'OFFLINE', '2026-10-02 14:00:00', NULL,                                  'COMPLETED', 0, '2026-09-29 11:00:00', '2026-10-02 15:30:00'),
-
--- Mentor: Isha Meena (2025BTECH009) - 1 completed
-(19, '2025BTECH009', '2026BTECH014', 1,  'Working with JSON and APIs in Python',    'ONLINE',  '2026-10-05 16:00:00', 'https://meet.google.com/jkl-u-dem19', 'COMPLETED', 0, '2026-10-01 10:00:00', '2026-10-05 17:30:00'),
-
--- Mentor: Sneha Agarwal (2024BBA001) - 3 completed
-(20, '2024BBA001',   '2025BBA004',   10, 'Corporate Financial Statement Analysis',  'OFFLINE', '2025-10-15 11:00:00', NULL,                                  'COMPLETED', 0, '2025-10-12 10:00:00', '2025-10-15 12:30:00'),
-(21, '2024BBA001',   '2026BBA006',   10, 'Double-Entry Bookkeeping Principles',     'ONLINE',  '2026-09-14 15:00:00', 'https://meet.google.com/jkl-u-dem21', 'COMPLETED', 0, '2026-09-10 11:00:00', '2026-09-14 16:30:00'),
-(22, '2024BBA001',   '2025BBA003',   12, 'Discounted Cash Flow (DCF) Modeling',     'ONLINE',  '2026-09-25 14:00:00', 'https://meet.google.com/jkl-u-dem22', 'COMPLETED', 0, '2026-09-21 16:00:00', '2026-09-25 15:30:00'),
-
--- Mentor: Tanmay Tiwari (2024BBA002) - 2 completed
-(23, '2024BBA002',   '2025BBA005',   11, 'Performance Marketing and Meta Ads',      'ONLINE',  '2025-11-08 17:00:00', 'https://meet.google.com/jkl-u-dem23', 'COMPLETED', 0, '2025-11-05 10:00:00', '2025-11-08 18:30:00'),
-(24, '2024BBA002',   '2026BBA007',   13, 'Debating and Public Speaking Framing',    'OFFLINE', '2026-09-16 16:00:00', NULL,                                  'COMPLETED', 0, '2026-09-12 12:00:00', '2026-09-16 17:30:00'),
-
--- Mentor: Bharat Bhushan (2024BDES001) - 3 completed
-(25, '2024BDES001',  '2025BDES004',  6,  'Figma Auto-layout and Design Tokens',     'ONLINE',  '2025-10-18 16:00:00', 'https://meet.google.com/jkl-u-dem25', 'COMPLETED', 0, '2025-10-14 11:00:00', '2025-10-18 17:30:00'),
-(26, '2024BDES001',  '2026BDES006',  7,  'Design Sprint: Empathy to Prototype',     'OFFLINE', '2026-09-11 14:00:00', NULL,                                  'COMPLETED', 0, '2026-09-08 09:00:00', '2026-09-11 15:30:00'),
-(27, '2024BDES001',  '2025BDES003',  6,  'Interactive Micro-interactions in Figma', 'ONLINE',  '2026-09-29 18:00:00', 'https://meet.google.com/jkl-u-dem27', 'COMPLETED', 0, '2026-09-26 14:00:00', '2026-09-29 19:30:00'),
-
--- Mentor: Chhavi Soni (2024BDES002) - 2 completed
-(28, '2024BDES002',  '2025BDES005',  8,  'SolidWorks Parametric Surface Modeling',  'OFFLINE', '2025-11-14 15:00:00', NULL,                                  'COMPLETED', 0, '2025-11-10 11:00:00', '2025-11-14 16:30:00'),
-(29, '2024BDES002',  '2026BDES007',  9,  'Editorial Typography and Grid Systems',   'ONLINE',  '2026-09-24 16:00:00', 'https://meet.google.com/jkl-u-dem29', 'COMPLETED', 0, '2026-09-20 10:00:00', '2026-09-24 17:30:00'),
-
--- Mentor: Devvrat Rao (2025BDES003) - 1 completed
-(30, '2025BDES003',  '2026BDES008',  6,  'Wireframing Mobile Flows from User Stories','ONLINE', '2026-10-08 17:00:00', 'https://meet.google.com/jkl-u-dem30', 'COMPLETED', 0, '2026-10-04 15:00:00', '2026-10-08 18:30:00'),
-
--- UPCOMING / ACCEPTED SESSIONS (status = 'ACCEPTED')
-(31, '2024BTECH001', '2025BTECH011', 2,  'Advanced Query Optimization & EXPLAIN',   'ONLINE',  '2026-11-15 16:00:00', 'https://meet.google.com/jkl-u-fut31', 'ACCEPTED',  0, '2026-10-15 10:00:00', '2026-10-16 11:00:00'),
-(32, '2024BTECH002', '2025BTECH012', 3,  'Next.js Server Side Rendering (SSR)',      'ONLINE',  '2026-11-18 18:00:00', 'https://meet.google.com/jkl-u-fut32', 'ACCEPTED',  0, '2026-10-18 14:00:00', '2026-10-19 09:30:00'),
-(33, '2024BBA001',   '2026BBA008',   10, 'Reading Balance Sheets for Non-Finance',  'OFFLINE', '2026-11-20 15:00:00', NULL,                                  'ACCEPTED',  0, '2026-10-20 11:00:00', '2026-10-21 10:00:00'),
-
--- REQUESTED SESSIONS (status = 'REQUESTED')
-(34, '2024BTECH003', '2026BTECH014', 4,  'Intro to Transformers & HuggingFace',     'ONLINE',  '2026-11-25 17:00:00', NULL,                                  'REQUESTED', 0, '2026-10-21 16:00:00', '2026-10-21 16:00:00'),
-(35, '2024BDES001',  '2026BDES007',  7,  'User Journey Mapping for Hackathons',     'ONLINE',  '2026-11-28 15:00:00', NULL,                                  'REQUESTED', 0, '2026-10-22 09:00:00', '2026-10-22 09:00:00'),
-
--- REJECTED SESSIONS (status = 'REJECTED')
-(36, '2024BTECH001', '2025BTECH010', 1,  'Deep Reinforcement Learning (Out of Scope)','ONLINE','2026-09-01 10:00:00', NULL,                                  'REJECTED',  0, '2026-08-28 11:00:00', '2026-08-29 12:00:00'),
-
--- CANCELLED SESSIONS (status = 'CANCELLED')
-(37, '2024BTECH002', '2025BTECH008', 3,  'Redux Saga Implementation',               'ONLINE',  '2026-09-04 16:00:00', NULL,                                  'CANCELLED', 0, '2026-09-01 14:00:00', '2026-09-03 10:00:00');
-
--- ----------------------------------------------------------------------------
--- 8. REPUTATION HISTORY (Awarded to mentors upon session completion, +10 each)
--- ----------------------------------------------------------------------------
-INSERT INTO reputation_history (history_id, roll_no, session_id, points, reason, created_at) VALUES
-(1,  '2024BTECH001', 1,  10, 'Completed mentoring session: Advanced Python Generators & Decorators', '2025-09-10 17:30:00'),
-(2,  '2024BTECH001', 2,  10, 'Completed mentoring session: Relational Normalization: 1NF to BCNF',   '2025-09-15 16:30:00'),
-(3,  '2024BTECH001', 3,  10, 'Completed mentoring session: Python OOP Fundamentals',                '2026-08-20 18:00:00'),
-(4,  '2024BTECH001', 4,  10, 'Completed mentoring session: Binary Search and Two Pointer Approach',  '2026-09-05 17:15:00'),
-(5,  '2024BTECH002', 5,  10, 'Completed mentoring session: Building Component Systems in React',     '2025-10-02 19:30:00'),
-(6,  '2024BTECH002', 6,  10, 'Completed mentoring session: Data Analysis with Pandas',              '2025-10-12 15:30:00'),
-(7,  '2024BTECH002', 7,  10, 'Completed mentoring session: State Management with Zustand and Redux', '2026-08-25 16:30:00'),
-(8,  '2024BTECH002', 8,  10, 'Completed mentoring session: Linear Regression and Gradient Descent',  '2026-09-10 18:30:00'),
-(9,  '2024BTECH002', 9,  10, 'Completed mentoring session: CSS Grid & Tailwind for Product Designers','2026-09-18 17:15:00'),
-(10, '2024BTECH003', 10, 10, 'Completed mentoring session: Decision Trees and Random Forests',       '2025-11-05 18:30:00'),
-(11, '2024BTECH003', 11, 10, 'Completed mentoring session: Neural Networks from Scratch in NumPy',   '2025-11-20 17:30:00'),
-(12, '2024BTECH003', 12, 10, 'Completed mentoring session: Python Automation & Web Scraping',       '2026-09-12 12:30:00'),
-(13, '2024BTECH004', 13, 10, 'Completed mentoring session: React Router and Dynamic Routing',        '2025-11-12 16:30:00'),
-(14, '2024BTECH004', 14, 10, 'Completed mentoring session: Flutter Widget Lifecycle and Navigation','2026-09-15 15:30:00'),
-(15, '2024BTECH005', 15, 10, 'Completed mentoring session: Interfacing Sensors with Arduino via I2C','2026-09-22 16:30:00'),
-(16, '2025BTECH007', 16, 10, 'Completed mentoring session: Python String Manipulation & Regex',      '2026-09-20 19:30:00'),
-(17, '2025BTECH007', 17, 10, 'Completed mentoring session: SQL Joins and Aggregation Deep Dive',     '2026-09-28 18:30:00'),
-(18, '2025BTECH008', 18, 10, 'Completed mentoring session: Clustering with K-Means in Python',       '2026-10-02 15:30:00'),
-(19, '2025BTECH009', 19, 10, 'Completed mentoring session: Working with JSON and APIs in Python',    '2026-10-05 17:30:00'),
-(20, '2024BBA001',   20, 10, 'Completed mentoring session: Corporate Financial Statement Analysis',  '2025-10-15 12:30:00'),
-(21, '2024BBA001',   21, 10, 'Completed mentoring session: Double-Entry Bookkeeping Principles',     '2026-09-14 16:30:00'),
-(22, '2024BBA001',   22, 10, 'Completed mentoring session: Discounted Cash Flow (DCF) Modeling',     '2026-09-25 15:30:00'),
-(23, '2024BBA002',   23, 10, 'Completed mentoring session: Performance Marketing and Meta Ads',      '2025-11-08 18:30:00'),
-(24, '2024BBA002',   24, 10, 'Completed mentoring session: Debating and Public Speaking Framing',    '2026-09-16 17:30:00'),
-(25, '2024BDES001',  25, 10, 'Completed mentoring session: Figma Auto-layout and Design Tokens',     '2025-10-18 17:30:00'),
-(26, '2024BDES001',  26, 10, 'Completed mentoring session: Design Sprint: Empathy to Prototype',     '2026-09-11 15:30:00'),
-(27, '2024BDES001',  27, 10, 'Completed mentoring session: Interactive Micro-interactions in Figma', '2026-09-29 19:30:00'),
-(28, '2024BDES002',  28, 10, 'Completed mentoring session: SolidWorks Parametric Surface Modeling',  '2025-11-14 16:30:00'),
-(29, '2024BDES002',  29, 10, 'Completed mentoring session: Editorial Typography and Grid Systems',   '2026-09-24 17:30:00'),
-(30, '2025BDES003',  30, 10, 'Completed mentoring session: Wireframing Mobile Flows from User Stories','2026-10-08 18:30:00');
+INSERT INTO student_skill (roll_no, skill_id, proficiency_level, can_teach) VALUES
+('2025BBA106', 9, 'BEGINNER', FALSE),
+('2025BTECH002', 23, 'BEGINNER', FALSE),
+('2025BTECH002', 33, 'BEGINNER', FALSE),
+('2025BTECH005', 16, 'BEGINNER', FALSE),
+('2025BTECH005', 39, 'BEGINNER', FALSE),
+('2025BTECH005', 40, 'BEGINNER', FALSE),
+('2025BTECH005', 41, 'BEGINNER', FALSE),
+('2025BTECH013', 26, 'BEGINNER', FALSE),
+('2025BTECH013', 49, 'BEGINNER', FALSE),
+('2025BTECH013', 50, 'BEGINNER', FALSE),
+('2025BTECH017', 1, 'BEGINNER', FALSE),
+('2025BTECH017', 2, 'BEGINNER', FALSE),
+('2025BTECH017', 3, 'BEGINNER', FALSE),
+('2025BTECH018', 46, 'BEGINNER', FALSE),
+('2025BTECH022', 7, 'BEGINNER', FALSE),
+('2025BTECH023', 3, 'BEGINNER', FALSE),
+('2025BTECH023', 9, 'BEGINNER', FALSE),
+('2025BTECH023', 25, 'BEGINNER', FALSE),
+('2025BTECH025', 8, 'BEGINNER', FALSE),
+('2025BTECH027', 47, 'BEGINNER', FALSE),
+('2025BTECH028', 11, 'BEGINNER', FALSE),
+('2025BTECH028', 12, 'BEGINNER', FALSE),
+('2025BTECH028', 13, 'BEGINNER', FALSE),
+('2025BTECH032', 20, 'BEGINNER', FALSE),
+('2025BTECH032', 21, 'BEGINNER', FALSE),
+('2025BTECH035', 4, 'BEGINNER', FALSE),
+('2025BTECH035', 20, 'BEGINNER', FALSE),
+('2025BTECH035', 21, 'BEGINNER', FALSE),
+('2025BTECH035', 26, 'BEGINNER', FALSE),
+('2025BTECH035', 27, 'BEGINNER', FALSE),
+('2025BTECH053', 14, 'BEGINNER', FALSE),
+('2025BTECH057', 18, 'BEGINNER', FALSE),
+('2025BTECH099', 9, 'BEGINNER', FALSE),
+('2025BTECH100', 4, 'BEGINNER', FALSE),
+('2025BTECH100', 21, 'BEGINNER', FALSE),
+('2025BTECH100', 26, 'BEGINNER', FALSE),
+('2025BTECH105', 5, 'BEGINNER', FALSE),
+('2025BTECH105', 21, 'BEGINNER', FALSE),
+('2025BTECH105', 26, 'BEGINNER', FALSE),
+('2025BTECH105', 29, 'BEGINNER', FALSE),
+('2025BTECH105', 60, 'BEGINNER', FALSE),
+('2025BTECH105', 61, 'BEGINNER', FALSE),
+('2025BTECH105', 62, 'BEGINNER', FALSE),
+('2025BTECH105', 63, 'BEGINNER', FALSE),
+('2025BTECH116', 3, 'BEGINNER', FALSE),
+('2025BTECH116', 17, 'BEGINNER', FALSE),
+('2025BTECH116', 26, 'BEGINNER', FALSE),
+('2025BTECH116', 76, 'BEGINNER', FALSE),
+('2025BTECH116', 77, 'BEGINNER', FALSE),
+('2025BTECH116', 78, 'BEGINNER', FALSE),
+('2025BTECH116', 79, 'BEGINNER', FALSE),
+('2025BTECH116', 80, 'BEGINNER', FALSE),
+('2025BTECH156', 24, 'BEGINNER', FALSE),
+('2025BTECH156', 35, 'BEGINNER', FALSE),
+('2025BTECH156', 36, 'BEGINNER', FALSE),
+('2025BTECH156', 37, 'BEGINNER', FALSE),
+('2025BTECH228', 57, 'BEGINNER', FALSE),
+('2025BTECH273', 71, 'BEGINNER', FALSE),
+('2025BTECH273', 72, 'BEGINNER', FALSE),
+('2026BBA004', 9, 'BEGINNER', FALSE),
+('2026BBA037', 53, 'BEGINNER', FALSE),
+('2026BBA037', 54, 'BEGINNER', FALSE),
+('2026BBA079', 59, 'BEGINNER', FALSE),
+('2026BBA079', 90, 'BEGINNER', FALSE),
+('2026BBA079', 91, 'BEGINNER', FALSE),
+('2026BBA079', 92, 'BEGINNER', FALSE),
+('2026BBA079', 93, 'BEGINNER', FALSE),
+('2026BBA079', 94, 'BEGINNER', FALSE),
+('2026BBA079', 95, 'BEGINNER', FALSE),
+('2026BBA079', 96, 'BEGINNER', FALSE),
+('2026BBA079', 97, 'BEGINNER', FALSE),
+('2026BBA106', 31, 'BEGINNER', FALSE),
+('2026BTECH108', 16, 'BEGINNER', FALSE),
+('2026BTECH108', 21, 'BEGINNER', FALSE),
+('2026BTECH108', 29, 'BEGINNER', FALSE),
+('2026BTECH108', 40, 'BEGINNER', FALSE),
+('2026BTECH108', 83, 'BEGINNER', FALSE),
+('2026BTECH108', 84, 'BEGINNER', FALSE),
+('2026BTECH108', 85, 'BEGINNER', FALSE),
+('2026BTECH108', 86, 'BEGINNER', FALSE),
+('2026BTECH147', 52, 'BEGINNER', FALSE),
+('2026BTECH147', 102, 'BEGINNER', FALSE),
+('2026BTECH220', 29, 'BEGINNER', FALSE),
+('2026BTECH286', 52, 'BEGINNER', FALSE),
+('2026BTECH286', 58, 'BEGINNER', FALSE),
+('2026BTECH294', 31, 'BEGINNER', FALSE),
+('2026BTECH294', 40, 'BEGINNER', FALSE),
+('2026BTECH294', 44, 'BEGINNER', FALSE),
+('2026BTECH300', 57, 'BEGINNER', FALSE);
 
 -- ----------------------------------------------------------------------------
--- 9. REVIEWS (Rating 1 to 5, reviewer is participant reviewing the other)
+-- 4. STUDENT_DESIRED_SKILL (83 Skills Students Desire to Learn)
 -- ----------------------------------------------------------------------------
-INSERT INTO review (session_id, roll_no, reviewee_roll_no, rating, comment, created_at) VALUES
--- Reviews on Aarav Sharma (Mentor)
-(1, '2025BTECH007', '2024BTECH001', 5, 'Super clear explanations of Python closures and yield expressions. Highly recommended!', '2025-09-10 18:00:00'),
-(2, '2025BTECH008', '2024BTECH001', 5, 'Helped me finally understand BCNF lossless decomposition. Great diagrams.',           '2025-09-15 17:00:00'),
-(3, '2026BTECH013', '2024BTECH001', 4, 'Patient mentor, took time to explain dunder methods thoroughly.',                     '2026-08-20 18:30:00'),
-(4, '2026BTECH014', '2024BTECH001', 5, 'Solved all binary search boundary condition doubts. Excellent mentor.',               '2026-09-05 18:00:00'),
-
--- Reviews on Bhavya Patel (Mentor)
-(5, '2025BTECH009', '2024BTECH002', 5, 'Bhavya knows React inside out. Helped structure clean reusable components.',         '2025-10-02 20:00:00'),
-(6, '2025BTECH010', '2024BTECH002', 4, 'Very practical hands-on examples with Pandas dataframes.',                           '2025-10-12 16:00:00'),
-(7, '2026BTECH013', '2024BTECH002', 5, 'Brilliant session on Zustand vs Redux state flows.',                                  '2026-08-25 17:00:00'),
-(8, '2026BTECH015', '2024BTECH002', 4, 'Clear math intuition behind gradient descent optimization.',                          '2026-09-10 19:00:00'),
--- Mutual review on session 5: Mentor Bhavya also reviewed Learner Isha!
-(5, '2024BTECH002', '2025BTECH009', 5, 'Very quick learner with strong core JavaScript fundamentals.',                       '2025-10-02 20:15:00'),
-
--- Reviews on Chirag Singhal (Mentor)
-(10, '2025BTECH008', '2024BTECH003', 5, 'Informative breakdown of Gini impurity vs Entropy in decision trees.',              '2025-11-05 19:00:00'),
-(11, '2025BTECH011', '2024BTECH003', 4, 'Good walkthrough of forward and backprop matrix derivatives.',                       '2025-11-20 18:00:00'),
-
--- Reviews on Sneha Agarwal (Mentor)
-(20, '2025BBA004',   '2024BBA001',   5, 'Demystified cash flows vs income statements. Best finance senior at JKLU.',          '2025-10-15 13:00:00'),
-(21, '2026BBA006',   '2024BBA001',   5, 'Helped clear my financial accounting mid-term concepts!',                            '2026-09-14 17:00:00'),
-
--- Reviews on Bharat Bhushan (Mentor)
-(25, '2025BDES004',  '2024BDES001',  5, 'Auto-layout masterclass. Clean Figma file hygiene.',                                  '2025-10-18 18:00:00'),
-(26, '2026BDES006',  '2024BDES001',  4, 'Great insights on conducting real stakeholder user interviews.',                      '2026-09-11 16:00:00'),
-
--- Review on Gauri Khandelwal (Mentor)
-(16, '2026BTECH013', '2025BTECH007', 4, 'Gauri was very helpful and shared practical regex cheatsheets.',                     '2026-09-20 20:00:00');
+INSERT INTO student_desired_skill (roll_no, skill_id) VALUES
+('2025BBA106', 10),
+('2025BTECH002', 34),
+('2025BTECH005', 4),
+('2025BTECH005', 23),
+('2025BTECH005', 31),
+('2025BTECH005', 42),
+('2025BTECH005', 43),
+('2025BTECH005', 44),
+('2025BTECH005', 45),
+('2025BTECH013', 34),
+('2025BTECH013', 51),
+('2025BTECH017', 4),
+('2025BTECH017', 5),
+('2025BTECH017', 6),
+('2025BTECH018', 4),
+('2025BTECH023', 10),
+('2025BTECH023', 16),
+('2025BTECH025', 3),
+('2025BTECH027', 3),
+('2025BTECH027', 48),
+('2025BTECH028', 14),
+('2025BTECH028', 15),
+('2025BTECH028', 16),
+('2025BTECH028', 17),
+('2025BTECH032', 22),
+('2025BTECH032', 23),
+('2025BTECH032', 24),
+('2025BTECH035', 5),
+('2025BTECH035', 16),
+('2025BTECH035', 23),
+('2025BTECH035', 28),
+('2025BTECH035', 29),
+('2025BTECH035', 30),
+('2025BTECH035', 31),
+('2025BTECH035', 32),
+('2025BTECH053', 3),
+('2025BTECH057', 19),
+('2025BTECH099', 52),
+('2025BTECH100', 74),
+('2025BTECH100', 75),
+('2025BTECH105', 4),
+('2025BTECH105', 31),
+('2025BTECH105', 44),
+('2025BTECH105', 60),
+('2025BTECH105', 64),
+('2025BTECH105', 65),
+('2025BTECH105', 66),
+('2025BTECH105', 67),
+('2025BTECH105', 68),
+('2025BTECH105', 69),
+('2025BTECH116', 36),
+('2025BTECH156', 38),
+('2025BTECH228', 58),
+('2025BTECH273', 73),
+('2026BBA004', 52),
+('2026BBA037', 16),
+('2026BBA037', 55),
+('2026BBA037', 56),
+('2026BBA079', 31),
+('2026BBA079', 55),
+('2026BBA079', 66),
+('2026BBA079', 81),
+('2026BBA079', 98),
+('2026BBA079', 99),
+('2026BBA079', 100),
+('2026BBA079', 101),
+('2026BBA106', 70),
+('2026BTECH108', 5),
+('2026BTECH108', 31),
+('2026BTECH108', 44),
+('2026BTECH108', 64),
+('2026BTECH108', 81),
+('2026BTECH108', 87),
+('2026BTECH108', 88),
+('2026BTECH108', 89),
+('2026BTECH147', 52),
+('2026BTECH220', 59),
+('2026BTECH275', 28),
+('2026BTECH286', 58),
+('2026BTECH294', 21),
+('2026BTECH294', 81),
+('2026BTECH294', 82),
+('2026BTECH300', 52);
 
 -- ----------------------------------------------------------------------------
--- 10. EXPERIENCES (Projects, Internships, Hackathons, Achievements)
+-- 5. LISTINGS (9 Authentic Campus Marketplace Items from Real Survey)
 -- ----------------------------------------------------------------------------
-INSERT INTO experience (roll_no, exp_no, role_title, organization, exp_type, start_date, end_date, description, created_at) VALUES
-('2024BTECH001', 1, 'Full Stack Engineering Intern', 'SecurePay Fintech', 'INTERNSHIP', '2025-05-15', '2025-07-30', 'Engineered Python microservices processing payment webhooks with 99.9% uptime.', '2025-08-01 10:00:00'),
-('2024BTECH001', 2, 'Lead Backend Developer', 'JKLU Smart Campus Portal', 'PROJECT', '2024-10-01', '2025-04-15', 'Designed relational schemas and JWT authentication for university portal.', '2025-04-20 11:00:00'),
-('2024BTECH001', 3, 'Smart India Hackathon Finalist', 'Ministry of Education', 'HACKATHON', '2024-09-15', '2024-09-17', 'Built an AI-driven farmer advisory portal using FastAPI and MySQL.', '2024-09-20 12:00:00'),
-
-('2024BTECH002', 1, 'Frontend Development Intern', 'Zeta Cloud Labs', 'INTERNSHIP', '2025-06-01', '2025-07-31', 'Built responsive React dashboards using Tailwind CSS and Recharts.', '2025-08-05 10:00:00'),
-('2024BTECH002', 2, 'Winner - HackJaipur 2024', 'JKLU Tech Club', 'HACKATHON', '2024-11-10', '2024-11-12', 'Secured 1st place building a peer-to-peer campus ride sharing app.', '2024-11-15 10:00:00'),
-
-('2024BTECH003', 1, 'Computer Vision Researcher', 'JKLU AI Lab', 'PROJECT', '2025-01-10', NULL, 'Developing real-time classroom attendance system via face embeddings.', '2025-01-15 10:00:00'),
-
-('2024BBA001',   1, 'Equity Research Analyst Intern', 'Prudent Wealth Advisors', 'INTERNSHIP', '2025-05-10', '2025-07-10', 'Constructed 3-statement financial models for renewable energy startups.', '2025-07-15 10:00:00'),
-('2024BBA001',   2, 'Best Delegate - Harvard MUN Jaipur', 'HMUN India', 'ACHIEVEMENT', '2024-10-05', '2024-10-07', 'Represented Japan in the Economic and Financial Committee.', '2024-10-10 10:00:00'),
-
-('2024BDES001',  1, 'UI/UX Design Intern', 'UrbanClap Design Studio', 'INTERNSHIP', '2025-05-01', '2025-07-15', 'Redesigned user checkout flow decreasing drop-offs by 18%.', '2025-07-20 10:00:00'),
-('2024BDES001',  2, 'Campus Signage Redesign', 'JKLU Estates Office', 'PROJECT', '2024-11-01', '2025-03-30', 'Audited wayfinding typography and fabricated accessible directional signs.', '2025-04-05 10:00:00');
--- Note: Several students have NO experience entries (e.g. 2026BTECH013, 2026BTECH018) for query 17
+INSERT INTO listing (listing_id, seller_roll_no, buyer_roll_no, title, description, status, price, original_price_text, category, item_condition) VALUES
+(1, '2025BTECH017', NULL, 'Stainless steel water bottle', 'Reusable stainless-steel water bottle in good condition.', 'AVAILABLE', 150.00, '150', 'Campus Essentials', 'GOOD'),
+(2, '2025BTECH025', NULL, 'Pack of playing cards', 'Pack of playing cards in very good condition.', 'AVAILABLE', 200.00, '200', 'Hobbies & Games', 'GOOD'),
+(3, '2025BTECH035', NULL, 'Reference book / semester notes', 'Semester notes for study and exam preparation.', 'AVAILABLE', 100.00, '100', 'Books & Notes', 'GOOD'),
+(4, '2025BTECH027', NULL, 'Acrylic colours', 'Partially used acrylic colours.', 'AVAILABLE', 120.00, '120', 'Art & Design', 'GOOD'),
+(5, '2025BTECH105', NULL, 'Exam Prep Kit – notes, important questions, PYQs and solutions', 'Student study package with notes, important topics, previous-year questions, solved examples and practice questions.', 'AVAILABLE', 99.00, '₹99 per subject', 'Books & Notes', 'NEW'),
+(6, '2025BTECH116', NULL, 'Programming First Principles Crash Course', 'From counting to Programming, every fundamental concept from logic gate level to a better understanding of CPU architecture. Later covering basic ARM assembly, leading to C and constrasting their relationship, giving the student a comprehensive tour of what goes in the processor.', 'AVAILABLE', 11999.00, '11999', 'Courses & Tutoring', 'NEW'),
+(7, '2026BTECH286', NULL, 'Small canvas paintings', 'Small canvas paintings for study-table decor, featuring scenery or motivational quotes.', 'AVAILABLE', 100.00, '100-150', 'Art & Design', 'NEW'),
+(8, '2026BBA079', NULL, 'AI model training guide and ready-made prompts', 'Guide to training AI models with ready-made prompts.', 'AVAILABLE', 29.00, '29₹', 'Digital Resources', 'NEW'),
+(9, '2026BTECH147', NULL, 'PowerPoint presentation design', 'Presentation design with structured content, modern layout, clean typography and a custom theme.', 'AVAILABLE', 100.00, '₹100 for 10 slides.', 'Academic Services', 'NEW');
 
 -- ----------------------------------------------------------------------------
--- 11. LISTINGS (Marketplace: AVAILABLE, SOLD, REMOVED)
+-- 6. SURVEY_IMPORT_AUDIT (Full Provenance for All 36 Survey Submissions)
 -- ----------------------------------------------------------------------------
-INSERT INTO listing (listing_id, seller_roll_no, buyer_roll_no, title, description, status, price, category, item_condition, posted_date, sold_at) VALUES
--- Available Listings
-(1, '2024BTECH001', NULL, 'Database System Concepts (Silberschatz, 7th Ed)', 'Hardcover textbook in mint condition. Highlight-free with all DBMS problem sets.', 'AVAILABLE', 450.00, 'Textbooks', 'LIKE_NEW', '2026-09-01 10:00:00', NULL),
-(2, '2024BTECH002', NULL, 'Logitech MX Master 3S Wireless Mouse', 'Ergonomic mouse with silent clicks. Used for 4 months, comes with USB receiver.', 'AVAILABLE', 3200.00, 'Electronics', 'LIKE_NEW', '2026-09-05 11:00:00', NULL),
-(3, '2024BTECH003', NULL, 'Arduino Mega 2560 R3 + Sensor Starter Kit', 'Includes breadboard, 30+ sensors, jumper wires and carrying case for IoT lab.', 'AVAILABLE', 850.00, 'Lab Equipment', 'GOOD', '2026-09-10 14:00:00', NULL),
-(4, '2024BBA001',   NULL, 'Financial Management by Prasanna Chandra', 'Standard reference book for BBA corporate finance courses. Minimal notes.', 'AVAILABLE', 350.00, 'Textbooks', 'GOOD', '2026-09-15 16:00:00', NULL),
-(5, '2024BDES001',  NULL, 'Wacom One Drawing Tablet 13.3 Inch', 'Digital drawing screen with pen and nibs. Ideal for digital illustration and design.', 'AVAILABLE', 12500.00, 'Electronics', 'LIKE_NEW', '2026-09-20 12:00:00', NULL),
-(6, '2025BTECH007', NULL, 'Dorm Room Study Lamp with USB Charging Port', 'Adjustable LED desk lamp with 3 color temperatures. Perfect for hostel rooms.', 'AVAILABLE', 400.00, 'Hostel Essentials', 'GOOD', '2026-09-25 15:00:00', NULL),
-(7, '2025BTECH008', NULL, 'Raspberry Pi 4 Model B (4GB RAM) with Case', 'Includes aluminum heatsink case, official power supply, and 32GB SD card.', 'AVAILABLE', 3800.00, 'Electronics', 'LIKE_NEW', '2026-10-01 10:00:00', NULL),
-
--- Sold Listings (buyer_roll_no and sold_at populated)
-(8,  '2024BTECH001', '2025BTECH007', 'Engineering Mechanics by Beer & Johnston', 'Essential first year reference book. Sold to junior student.', 'SOLD', 300.00, 'Textbooks', 'GOOD', '2026-08-15 10:00:00', '2026-08-20 14:30:00'),
-(9,  '2024BTECH002', '2026BTECH013', 'Casio FX-991EX Classwiz Scientific Calculator', 'High resolution scientific calculator approved for university semester exams.', 'SOLD', 750.00, 'Electronics', 'LIKE_NEW', '2026-08-18 11:00:00', '2026-08-22 16:00:00'),
-(10, '2024BDES002',  '2026BDES006',  'A3 Drafting Table Board with Parallel Ruler', 'Portable drafting table for technical drawing and product rendering.', 'SOLD', 950.00, 'Lab Equipment', 'GOOD', '2026-08-20 12:00:00', '2026-08-26 15:45:00'),
-(11, '2024BBA002',   '2025BBA003',   'Marketing Management by Philip Kotler (15th Ed)', 'Comprehensive marketing reference with case study annotations.', 'SOLD', 500.00, 'Textbooks', 'FAIR', '2026-08-25 10:00:00', '2026-08-30 11:20:00'),
-
--- Removed Listings (no longer available)
-(12, '2025BTECH009', NULL, 'Cycle Lock with High Security Combination', 'Seller decided to keep item for personal use.', 'REMOVED', 150.00, 'Hostel Essentials', 'GOOD', '2026-09-02 10:00:00', NULL),
-(13, '2025BDES003',  NULL, 'Acrylic Paint Set & Canvas Pack', 'Withdrawn by seller.', 'REMOVED', 600.00, 'Stationery', 'NEW', '2026-09-12 11:00:00', NULL);
+INSERT INTO survey_import_audit (submission_id, survey_timestamp, student_name, raw_roll_no, normalized_roll_no, raw_email, raw_current_skills, raw_desired_skills, raw_sell_flag, raw_item, raw_price, raw_description, import_status, notes) VALUES
+(1, '2026-10-28 20:25:48', 'Aayushi Kaushik', '2025btech017', '2025BTECH017', 'aayushikaushik@jklu.edu.in', 'Handmade jewellery, C++, guitar', 'DSA, web development, crochet', 'Yes', 'Stainless steel water bottle', '150', 'Reusable stainless-steel water bottle in good condition.', 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(2, '2026-10-28 20:32:21', 'Dhanyashree Sen', '2025Btech022', '2025BTECH022', 'dhanyashreesen@jklu.edu.in', 'Writing', 'Not specified', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(3, '2026-10-28 20:43:41', 'Garvit', '2025btech025', '2025BTECH025', 'garvitagrawal@jklu.edu.in', 'Magic tricks', 'Guitar', 'Yes', 'Pack of playing cards', '200', 'Pack of playing cards in very good condition.', 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(4, '2026-10-28 20:45:34', 'Dhruv Tyagi', '2025btech023', '2025BTECH023', 'dhruvkumar@jklu.edu.in', 'Non-academic skills (unspecified)', 'Academic and non-academic skills', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(5, '2026-10-28 20:45:37', 'Heramb Sharma', '2025BTech028', '2025BTECH028', 'herambsharma@jklu.edu.in', 'Hybrid athletics, football, vibe coding', 'Basketball, logical thinking, communication, mathematics', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(6, '2026-10-28 20:49:40', 'Vaishali agarwal', '2025btech057', '2025BTECH057', 'vaishaliagarwal@jklu.edu.in', 'Discrete mathematics', 'Badminton', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(7, '2026-10-28 20:53:52', 'Ishvit Bhardwaj', '2025btech032', '2025BTECH032', 'ishvitbhardwaj@jklu.edu.in', 'SQL, Python', 'Quantitative finance, AI, dance', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(8, '2026-10-28 20:54:17', 'Dhruv Tyagi', '2025btech023', '2025BTECH023', 'dhruvkumar@jklu.edu.in', 'Baking, guitar', 'Communication', 'No', NULL, NULL, NULL, 'MERGED_DUPLICATE', 'Duplicate submission for 2025BTECH023 merged with prior submission.'),
+(9, '2026-10-28 20:57:17', 'Medha Kumari', '2025btech035', '2025BTECH035', 'medhakumari@jklu.edu.in', 'C, Python, DSA, SQL, logical problem-solving', 'Programming, problem-solving, communication, web development, AI, automation, public speaking, project management', 'Yes', 'Reference book / semester notes', '100', 'Semester notes for study and exam preparation.', 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(10, '2026-10-28 21:18:38', 'Aalap Goswami', '2025Btech002', '2025BTECH002', 'aalapgoswami@jklu.edu.in', 'Backend development, AI', 'Cloud computing', 'No', 'No', '0', 'No', 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(11, '2026-10-28 21:20:15', 'Naina Dayaramani', '2025Btech156', '2025BTECH156', 'nainadayaramani@jklu.edu.in', 'Coding, sketching, dance, painting', 'Cooking', 'No', 'NA', 'NA', 'NA', 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(12, '2026-10-28 21:23:01', 'Sudhi Chaurasia', '2025btech053', '2025BTECH053', 'sudhichaurasia@jklu.edu.in', 'Basketball', 'Guitar', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(13, '2026-10-28 21:26:52', 'Abhyudya Sharma', '2025btech005', '2025BTECH005', 'abhyudyasharma@jklu.edu.in', 'C programming, communication, teamwork, drums', 'Full-stack development, DSA, AI, databases, leadership, public speaking, drumming', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(14, '2026-10-28 21:31:20', 'BHANU PRATAP', '2025Btech018', '2025BTECH018', 'bhanupratapsinghkhangarot@jklu.edu.in', 'Singing', 'DSA', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(15, '2026-10-28 21:33:32', 'Hansika Agarwal', '2025BTECH027', '2025BTECH027', 'hansikaagarwal@jklu.edu.in', 'DBMS', 'Computer architecture, guitar', 'Yes', 'Acrylic colours', '120', 'Partially used acrylic colours.', 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(16, '2026-10-28 21:47:57', 'Arunil Jain', '2025BTech013', '2025BTECH013', 'aruniljain@jklu.edu.in', 'AI tools, prompt design, C', 'Cloud computing, behavioral psychology', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(17, '2026-10-28 21:52:03', 'Agam jain', '004', '2026BBA004', 'agamjain@jklu.edu.in', 'Non-academic skills (unspecified)', 'Academic skills', 'No', 'Item details needed', '300', 'Item name and description were not provided.', 'IMPORTED', 'Successfully imported (Confirmed correction).'),
+(18, '2026-10-28 22:02:16', 'HIRANAND NAINWANI', '2026 BBA 050', '2026BBA050', 'hiranandnainwani@jklu.edu.in', 'Not specified', 'Not specified', 'Yes', NULL, '99/-', NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(19, '2026-10-28 22:04:38', 'Shreshtha sharma', '2025BBA106', '2025BBA106', 'shreshthasharma@jklu.edu.in', 'Non-academic skills (unspecified)', 'Academic and non-academic skills', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(20, '2026-10-28 22:05:15', 'Gauransh sharma', '2026BBA037', '2026BBA037', 'gauranshsharma@jklu.edu.in', 'Music, cultural performance', 'Communication, Excel, prompt engineering', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(21, '2026-10-28 22:14:45', 'Amrutha Varsha', '2026/B.Tech/275', '2026BTECH275', 'chakaliamruthavarsha@jklu.edu.in', 'Not specified', 'Programming', 'No', 'Nothing', '0', 'Nothing', 'IMPORTED', 'Successfully imported (Normalized slash format).'),
+(22, '2026-10-28 22:16:02', 'Nayanshi Jain', '2026/B.Tech/300', '2026BTECH300', 'nayanshijain@jklu.edu.in', 'Academic skills (unspecified)', 'Academic skills', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized slash format).'),
+(23, '2026-10-28 22:21:34', 'Shivam Srivastava', '2025btech228', '2025BTECH228', 'shivamsrivastava@jklu.edu.in', 'Academic skills (unspecified)', 'Non-academic skills', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(24, '2026-10-28 22:44:26', 'Jahanvi', '2026Btech220', '2026BTECH220', 'jahanvihada@jklu.edu.in', 'Problem-solving', 'Digital marketing', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(25, '2026-10-28 22:46:46', 'Rudrapal Singh Shekhawat', '2025btech105', '2025BTECH105', 'rudrapalsinghshekhawat@jklu.edu.in', 'Python, C, web development, problem-solving, networking, social skills, persuasion, creativity', 'DSA, AI/ML, app development, leadership, public speaking, networking, negotiation, time management, business skills, decision-making', 'Yes', 'Exam Prep Kit – notes, important questions, PYQs and solutions', '₹99 per subject', 'Student study package with notes, important topics, previous-year questions, solved examples and practice questions.', 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(26, '2026-10-28 23:08:45', 'Ashutosh Gupta', '2026bba106', '2026BBA106', 'ashutoshgupta2026@jklu.edu.in', 'Public speaking', 'Stock market analysis', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(27, '2026-10-29 00:23:39', 'Raghuraj Singh Shekhawat', '2025btech273', '2025BTECH273', 'raghurajsinghshekhawat@jklu.edu.in', 'RTL design, embedded systems', 'Nanotechnology engineering', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(28, '2026-10-29 10:32:35', 'Raghuraj Jangid', '2025btech100', '2025BTECH100', 'raghurajjangid@jklu.edu.in', 'Python, C, DSA', 'Management, additional technology skills', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(29, '2026-10-29 11:40:45', 'Raghav sharma', '2025btech099', '2025BTECH099', 'raghavsharma2025@jklu.edu.in', 'Non-academic skills (unspecified)', 'Academic skills', 'No', 'Programming First Principles Crash Course', NULL, 'Course covering computing fundamentals, logic gates, CPU architecture, ARM assembly and C.', 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(30, '2026-10-29 16:14:02', 'Tanishq', '2025btech116', '2025BTECH116', 'tanishqdaiya@jklu.edu.in', 'French, history, grappling, guitar, C, systems programming, OS/kernel development, mathematics', 'Sketching', 'Yes', 'Programming First Principles Crash Course', '11999', 'From counting to Programming, every fundamental concept from logic gate level to a better understanding of CPU architecture. Later covering basic ARM assembly, leading to C and constrasting their relationship, giving the student a comprehensive tour of what goes in the processor.', 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(31, '2026-10-30 01:24:41', 'Mahi Pal', '2026BTech294', '2026BTECH294', 'mahipal@jklu.edu.in', 'Public speaking, teamwork, leadership', 'Python, video editing, musical instruments', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(32, '2026-10-31 12:01:21', 'Rahi Agarwal', '2026BTech108', '2026BTECH108', 'rahiagarwal@jklu.edu.in', 'Python, Canva, PowerPoint, communication, teamwork, research, creative thinking, problem-solving', 'Web development, advanced Python, AI/ML, graphic design, video editing, UI/UX, public speaking, leadership', 'No', NULL, NULL, NULL, 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(33, '2026-10-31 12:09:00', 'jahanvi singh', '2026/b.tech/286', '2026BTECH286', 'jahanvisingh@jklu.edu.in', 'Academic skills; non-academic skills', 'Non-academic skills', 'Yes', 'Small canvas paintings', '100-150', 'Small canvas paintings for study-table decor, featuring scenery or motivational quotes.', 'IMPORTED', 'Successfully imported (Normalized slash format).'),
+(34, '2026-10-31 23:13:51', 'Mohit Pandit', '2026BBA079', '2026BBA079', 'mohitpandit@jklu.edu.in', 'React, Node.js, Tailwind CSS, AI automation, digital marketing, UI/creative design, freelancing, event management, presentations', 'Financial modelling, Excel, data analytics, public speaking, negotiation, sales, video editing, AI startup building', 'Yes', 'AI model training guide and ready-made prompts', '29₹', 'Guide to training AI models with ready-made prompts.', 'IMPORTED', 'Successfully imported (Normalized casing/spaces).'),
+(35, '2026-11-01 15:05:38', 'Harshit Adhikari', '147btech2026', '2026BTECH147', 'harshitadhikari@jklu.edu.in', 'Academic skills; presentation design', 'Academic skills', 'Yes', 'PowerPoint presentation design', '₹100 for 10 slides.', 'Presentation design with structured content, modern layout, clean typography and a custom theme.', 'IMPORTED', 'Successfully imported (Confirmed correction).'),
+(36, '2026-11-02 21:53:52', 'Dhanyashree Sen', '2025Btech022', '2025BTECH022', 'dhanyashreesen@jklu.edu.in', 'Not specified', 'Not specified', 'No', NULL, NULL, NULL, 'MERGED_DUPLICATE', 'Duplicate submission for 2025BTECH022 merged with prior submission.');

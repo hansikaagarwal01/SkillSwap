@@ -11,16 +11,16 @@ import {
   ShieldCheck,
   ArrowRight,
   Sparkles,
-  CheckCircle2,
   Lock,
 } from 'lucide-react';
 
 export const Home = () => {
   const [stats, setStats] = useState({
-    total_students: 34,
-    total_skills: 18,
-    total_sessions: 37,
-    total_listings: 13,
+    total_students: 0,
+    total_skills: 0,
+    total_desired_skills: 0,
+    total_sessions: 0,
+    total_listings: 0,
   });
 
   useEffect(() => {
@@ -30,11 +30,12 @@ export const Home = () => {
         setStats({
           total_students: res.data.total_students,
           total_skills: res.data.total_skills,
+          total_desired_skills: res.data.total_desired_skills || 83,
           total_sessions: res.data.total_sessions,
           total_listings: res.data.total_listings,
         });
       })
-      .catch((err) => console.log('Using default seed stats', err));
+      .catch((err) => console.error('Failed to fetch analytics overview', err));
   }, []);
 
   return (
@@ -76,32 +77,16 @@ export const Home = () => {
               <span>Campus Marketplace</span>
             </Link>
           </div>
-
-          {/* Academic Guarantees */}
-          <div className="pt-4 border-t border-academic-border/60 flex flex-wrap gap-x-6 gap-y-2 text-xs text-academic-muted">
-            <div className="flex items-center space-x-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Strict @jklu.edu.in Verified</span>
-            </div>
-            <div className="flex items-center space-x-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>100% Free Sessions (0 Credits)</span>
-            </div>
-            <div className="flex items-center space-x-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Atomic Concurrency Safety</span>
-            </div>
-          </div>
         </div>
       </section>
 
       {/* Campus Stats Counter */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Enrolled Students', value: stats.total_students, icon: Users, sub: 'B.Tech, BBA, B.Des' },
-          { label: 'Academic Skills', value: stats.total_skills, icon: BookOpen, sub: 'Teachable proficiencies' },
-          { label: 'Mentorship Sessions', value: stats.total_sessions, icon: Calendar, sub: 'Across 5 statuses' },
-          { label: 'Marketplace Listings', value: stats.total_listings, icon: ShoppingBag, sub: 'Hardware & books' },
+          { label: 'JKLU Students', value: stats.total_students, icon: Users, sub: 'BTECH / BBA / BDES Programs' },
+          { label: 'Catalog Skills', value: stats.total_skills, icon: BookOpen, sub: 'Distinct Academic & Extracurricular' },
+          { label: 'Desired Skills', value: stats.total_desired_skills || 83, icon: Sparkles, sub: 'Peer Learning Goals' },
+          { label: 'Marketplace Items', value: stats.total_listings, icon: ShoppingBag, sub: 'Authentic Campus Offerings' },
         ].map((item, idx) => {
           const Icon = item.icon;
           return (

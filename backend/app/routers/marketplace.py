@@ -133,3 +133,33 @@ def purchase_listing(
         listing_id=listing_id,
         buyer_roll=current_user.roll_no,
     )
+
+
+@router.post("/{listing_id}/confirm-sale", response_model=ListingResponse)
+def confirm_sale(
+    listing_id: int,
+    current_user: Student = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    is_admin = bool(current_user.auth_account and current_user.auth_account.role == "ADMIN")
+    return marketplace_service.confirm_sale(
+        db=db,
+        listing_id=listing_id,
+        seller_roll=current_user.roll_no,
+        is_admin=is_admin,
+    )
+
+
+@router.post("/{listing_id}/cancel-sale", response_model=ListingResponse)
+def cancel_sale(
+    listing_id: int,
+    current_user: Student = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    is_admin = bool(current_user.auth_account and current_user.auth_account.role == "ADMIN")
+    return marketplace_service.cancel_sale(
+        db=db,
+        listing_id=listing_id,
+        user_roll=current_user.roll_no,
+        is_admin=is_admin,
+    )

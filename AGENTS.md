@@ -12,7 +12,7 @@ A university peer-mentoring, skill-sharing, and student marketplace platform.
 5. **Emails:** Must strictly end with `@jklu.edu.in`. No lookalike domains (`evil-jklu.edu.in`, `jklu.edu.in.evil.com`).
 6. **Free Sessions & Non-spendable Reputation:** All sessions have `credit_cost = 0`. Reputation points cannot be spent or transferred.
 7. **Safe Concurrency:**
-   - Session completion uses `SELECT ... FOR UPDATE` + unique `reputation_history(session_id)`.
+   - Session completion uses `SELECT ... FOR UPDATE` + `reputation_awarded` check on `learning_session`.
    - Marketplace purchase uses conditional `UPDATE listing SET status='SOLD', buyer_roll_no=:buyer, sold_at=NOW() WHERE listing_id=:id AND status='AVAILABLE' AND seller_roll_no <> :buyer`.
 8. **No Placeholders or Stubs:** All code must be complete, typed, modular, and verified.
 

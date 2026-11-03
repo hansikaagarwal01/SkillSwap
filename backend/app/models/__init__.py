@@ -1,24 +1,21 @@
 from app.db.base import Base
-from app.models.department import Department
 from app.models.student import Student
-from app.models.auth import AuthAccount, EmailVerificationToken
-from app.models.skill import Skill, StudentSkill
-from app.models.session import LearningSession, ReputationHistory
+from app.models.skill import Skill, StudentSkill, StudentDesiredSkill
+from app.models.session import LearningSession
 from app.models.review import Review
 from app.models.experience import Experience
 from app.models.listing import Listing
+from app.models.audit import SurveyImportAudit
 
 __all__ = [
     "Base",
-    "Department",
     "Student",
-    "AuthAccount",
-    "EmailVerificationToken",
     "Skill",
     "StudentSkill",
+    "StudentDesiredSkill",
     "LearningSession",
-    "ReputationHistory",
     "Review",
     "Experience",
     "Listing",
+    "SurveyImportAudit",
 ]

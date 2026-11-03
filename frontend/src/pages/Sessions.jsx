@@ -15,6 +15,7 @@ import {
   ExternalLink,
   RotateCcw,
   Sparkles,
+  Edit2,
 } from 'lucide-react';
 
 export const Sessions = () => {
@@ -40,6 +41,15 @@ export const Sessions = () => {
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
   const [rescheduleError, setRescheduleError] = useState('');
+
+  // Edit Session Modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editTopic, setEditTopic] = useState('');
+  const [editMode, setEditMode] = useState('ONLINE');
+  const [editMeetingLink, setEditMeetingLink] = useState('');
+  const [editScheduledAt, setEditScheduledAt] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState('');
 
   const fetchSessions = async () => {
     setLoading(true);
@@ -91,6 +101,36 @@ export const Sessions = () => {
       setRescheduleError(err.response?.data?.error?.message || 'Failed to reschedule.');
     } finally {
       setRescheduleLoading(false);
+    }
+  };
+
+  const openEditModal = (sess) => {
+    setActiveSession(sess);
+    setEditTopic(sess.topic || '');
+    setEditMode(sess.mode || 'ONLINE');
+    setEditMeetingLink(sess.meeting_link || '');
+    setEditScheduledAt(sess.scheduled_at ? sess.scheduled_at.slice(0, 16) : '');
+    setEditError('');
+    setEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setEditLoading(true);
+    setEditError('');
+    try {
+      await api.patch(`/sessions/${activeSession.session_id}`, {
+        topic: editTopic.trim(),
+        mode: editMode,
+        scheduled_at: new Date(editScheduledAt).toISOString(),
+        meeting_link: editMode === 'ONLINE' ? (editMeetingLink.trim() || null) : null,
+      });
+      setEditModalOpen(false);
+      fetchSessions();
+    } catch (err) {
+      setEditError(err.response?.data?.error?.message || 'Failed to update session.');
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -285,9 +325,17 @@ export const Sessions = () => {
                     </button>
                   )}
 
-                  {/* Reschedule & Cancel for pending/accepted */}
+                  {/* Reschedule, Edit & Cancel for pending/accepted */}
                   {(sess.status === 'REQUESTED' || sess.status === 'ACCEPTED') && (
                     <>
+                      <button
+                        onClick={() => openEditModal(sess)}
+                        className="px-3 py-1.5 rounded-lg border border-academic-border bg-academic-secondary hover:bg-academic-border/60 text-academic-primary transition-colors flex items-center space-x-1"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-academic-muted" />
+                        <span>Edit Details</span>
+                      </button>
+
                       <button
                         onClick={() => {
                           setActiveSession(sess);
@@ -375,6 +423,95 @@ export const Sessions = () => {
               className="px-4 py-2 rounded-lg bg-academic-burgundy text-white font-semibold shadow-xs hover:bg-academic-burgundy/90 disabled:opacity-50"
             >
               {rescheduleLoading ? 'Updating...' : 'Save New Time'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Session Details Modal */}
+      <Modal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        title={`Edit Session #${activeSession?.session_id} Details`}
+      >
+        <form onSubmit={handleEditSubmit} className="space-y-4 text-xs">
+          {editError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg">
+              {editError}
+            </div>
+          )}
+
+          <div>
+            <label className="block font-semibold text-academic-primary mb-1 uppercase tracking-wider">
+              Topic / Focus Questions *
+            </label>
+            <textarea
+              required
+              rows={3}
+              value={editTopic}
+              onChange={(e) => setEditTopic(e.target.value)}
+              className="w-full p-2.5 rounded-lg border border-academic-border bg-academic-bg text-academic-primary focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-academic-primary mb-1 uppercase tracking-wider">
+                Mode *
+              </label>
+              <select
+                value={editMode}
+                onChange={(e) => setEditMode(e.target.value)}
+                className="w-full p-2.5 rounded-lg border border-academic-border bg-academic-bg text-academic-primary focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
+              >
+                <option value="ONLINE">Online (Google Meet)</option>
+                <option value="OFFLINE">Offline (Campus Library)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-academic-primary mb-1 uppercase tracking-wider">
+                Scheduled Time *
+              </label>
+              <input
+                type="datetime-local"
+                required
+                value={editScheduledAt}
+                onChange={(e) => setEditScheduledAt(e.target.value)}
+                className="w-full p-2.5 rounded-lg border border-academic-border bg-academic-bg text-academic-primary focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
+              />
+            </div>
+          </div>
+
+          {editMode === 'ONLINE' && (
+            <div>
+              <label className="block font-semibold text-academic-primary mb-1 uppercase tracking-wider">
+                Google Meet / Zoom Meeting Link
+              </label>
+              <input
+                type="url"
+                value={editMeetingLink}
+                placeholder="https://meet.google.com/..."
+                onChange={(e) => setEditMeetingLink(e.target.value)}
+                className="w-full p-2.5 rounded-lg border border-academic-border bg-academic-bg text-academic-primary focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
+              />
+            </div>
+          )}
+
+          <div className="pt-2 flex justify-end space-x-2">
+            <button
+              type="button"
+              onClick={() => setEditModalOpen(false)}
+              className="px-4 py-2 rounded-lg border border-academic-border bg-academic-card text-academic-muted hover:bg-academic-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={editLoading}
+              className="px-4 py-2 rounded-lg bg-academic-burgundy text-white font-semibold shadow-xs hover:bg-academic-burgundy/90 disabled:opacity-50"
+            >
+              {editLoading ? 'Saving Changes...' : 'Save Session Details'}
             </button>
           </div>
         </form>

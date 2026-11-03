@@ -36,6 +36,22 @@ class SessionStatusUpdate(BaseModel):
     status: Literal["ACCEPTED", "REJECTED", "CANCELLED", "COMPLETED"]
 
 
+class SessionUpdate(BaseModel):
+    topic: Optional[str] = None
+    mode: Optional[Literal["ONLINE", "OFFLINE"]] = None
+    scheduled_at: Optional[datetime] = None
+    meeting_link: Optional[str] = None
+
+    @field_validator("topic")
+    @classmethod
+    def clean_topic(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            v = v.strip()
+            if len(v) < 3:
+                raise ValueError("Topic must be at least 3 characters.")
+        return v
+
+
 class SessionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -52,6 +68,9 @@ class SessionResponse(BaseModel):
     meeting_link: Optional[str] = None
     status: Literal["REQUESTED", "ACCEPTED", "REJECTED", "CANCELLED", "COMPLETED"]
     credit_cost: int = 0
+    points_awarded: int = 0
+    reputation_awarded: bool = False
+    reputation_awarded_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
     has_review: bool = False

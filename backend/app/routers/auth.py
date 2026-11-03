@@ -12,7 +12,6 @@ from app.schemas.auth import (
     UserMeResponse
 )
 from app.models.student import Student
-from app.models.auth import AuthAccount
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -66,14 +65,16 @@ def get_me(current_user: Student = Depends(get_current_user)):
     summary="Instantly verify and activate student account"
 )
 def verify_account(roll_no: str, db: Session = Depends(get_db)):
-    account = db.query(AuthAccount).filter(AuthAccount.roll_no == roll_no.strip().upper()).first()
-    if not account:
+    student = db.query(Student).filter(Student.roll_no == roll_no.strip().upper()).first()
+    if not student:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "ACCOUNT_NOT_FOUND", "message": "Account not found."}
         )
-    account.email_verified = True
-    account.account_status = "ACTIVE"
+    student.email_verified = True
+    student.account_status = "ACTIVE"
+    student.verification_token_hash = None
+    student.verification_token_expires_at = None
     db.commit()
     return {"message": f"Account {roll_no} successfully verified and activated."}
 
@@ -95,17 +96,17 @@ def approve_account(
     db: Session = Depends(get_db),
     admin: Student = Depends(require_admin)
 ):
-    account = db.query(AuthAccount).filter(AuthAccount.roll_no == roll_no).first()
-    if not account:
+    student = db.query(Student).filter(Student.roll_no == roll_no).first()
+    if not student:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "ACCOUNT_NOT_FOUND", "message": "Account not found."}
         )
-    if account.account_status != "PENDING_APPROVAL":
+    if student.account_status != "PENDING_APPROVAL":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "INVALID_STATE", "message": f"Account status is {account.account_status}, not PENDING_APPROVAL."}
+            detail={"code": "INVALID_STATE", "message": f"Account status is {student.account_status}, not PENDING_APPROVAL."}
         )
-    account.account_status = "ACTIVE"
+    student.account_status = "ACTIVE"
     db.commit()
     return {"message": f"Account {roll_no} successfully approved and activated."}

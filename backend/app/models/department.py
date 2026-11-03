@@ -1,22 +1,16 @@
-from datetime import datetime
-from typing import TYPE_CHECKING
-from sqlalchemy import String, Integer, DateTime, Enum, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.db.base import Base
+from dataclasses import dataclass
 
-if TYPE_CHECKING:
-    from app.models.student import Student
+@dataclass
+class Department:
+    """Static catalog representation for academic departments."""
+    d_id: int
+    name: str
+    program: str
 
-class Department(Base):
-    __tablename__ = "department"
-
-    d_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
-    program: Mapped[str | None] = mapped_column(
-        Enum("BTECH", "BBA", "BDES", name="department_program_enum"),
-        nullable=True
-    )
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
-
-    # Relationships
-    students: Mapped[list["Student"]] = relationship("Student", back_populates="department")
+PREDEFINED_DEPARTMENTS = [
+    Department(1, "Computer Science and Engineering", "BTECH"),
+    Department(2, "Artificial Intelligence and Data Science", "BTECH"),
+    Department(3, "Electronics and Communication Engineering", "BTECH"),
+    Department(4, "Institute of Management", "BBA"),
+    Department(5, "Institute of Design", "BDES"),
+]

@@ -17,6 +17,9 @@ import {
   ShieldCheck,
   PackageCheck,
   Sparkles,
+  Mail,
+  Check,
+  X,
 } from 'lucide-react';
 
 export const Marketplace = () => {
@@ -47,12 +50,25 @@ export const Marketplace = () => {
   const [postLoading, setPostLoading] = useState(false);
   const [postError, setPostError] = useState('');
 
-  // Purchase Modal
+  // Buy Request Modal
   const [buyModalOpen, setBuyModalOpen] = useState(false);
   const [targetListing, setTargetListing] = useState(null);
+  const [buyConfirmed, setBuyConfirmed] = useState(false);
   const [buyLoading, setBuyLoading] = useState(false);
   const [buySuccess, setBuySuccess] = useState('');
   const [buyError, setBuyError] = useState('');
+
+  // Seller Confirm Payment Modal
+  const [sellerModalOpen, setSellerModalOpen] = useState(false);
+  const [sellerTarget, setSellerTarget] = useState(null);
+  const [sellerLoading, setSellerLoading] = useState(false);
+  const [sellerError, setSellerError] = useState('');
+
+  // Cancel Deal Modal
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelError, setCancelError] = useState('');
 
   const fetchListings = async () => {
     setLoading(true);
@@ -118,6 +134,7 @@ export const Marketplace = () => {
       return;
     }
     setTargetListing(item);
+    setBuyConfirmed(false);
     setBuyError('');
     setBuySuccess('');
     setBuyModalOpen(true);
@@ -129,15 +146,55 @@ export const Marketplace = () => {
     setBuySuccess('');
     try {
       await api.post(`/listings/${targetListing.listing_id}/purchase`);
-      setBuySuccess('Purchase successful! The item is now marked SOLD.');
+      setBuySuccess('Purchase request submitted! The item is now marked In Progress. Coordinate on campus with the seller.');
       setTimeout(() => {
         setBuyModalOpen(false);
         fetchListings();
-      }, 1500);
+      }, 1400);
     } catch (err) {
-      setBuyError(err.response?.data?.error?.message || 'Purchase could not be completed.');
+      setBuyError(err.response?.data?.error?.message || 'Purchase request could not be completed.');
     } finally {
       setBuyLoading(false);
+    }
+  };
+
+  const openSellerConfirmModal = (item) => {
+    setSellerTarget(item);
+    setSellerError('');
+    setSellerModalOpen(true);
+  };
+
+  const handleSellerConfirm = async () => {
+    setSellerLoading(true);
+    setSellerError('');
+    try {
+      await api.post(`/listings/${sellerTarget.listing_id}/confirm-sale`);
+      setSellerModalOpen(false);
+      fetchListings();
+    } catch (err) {
+      setSellerError(err.response?.data?.error?.message || 'Failed to confirm sale.');
+    } finally {
+      setSellerLoading(false);
+    }
+  };
+
+  const openCancelModal = (item) => {
+    setCancelTarget(item);
+    setCancelError('');
+    setCancelModalOpen(true);
+  };
+
+  const handleCancelSale = async () => {
+    setCancelLoading(true);
+    setCancelError('');
+    try {
+      await api.post(`/listings/${cancelTarget.listing_id}/cancel-sale`);
+      setCancelModalOpen(false);
+      fetchListings();
+    } catch (err) {
+      setCancelError(err.response?.data?.error?.message || 'Failed to cancel deal.');
+    } finally {
+      setCancelLoading(false);
     }
   };
 
@@ -285,9 +342,16 @@ export const Marketplace = () => {
                     <h3 className="font-serif font-bold text-base text-academic-primary leading-tight">
                       {item.title}
                     </h3>
-                    <p className="text-xl font-bold font-serif text-academic-burgundy mt-1">
-                      ₹ {parseFloat(item.price).toFixed(2)}
-                    </p>
+                    <div className="flex items-baseline space-x-2 mt-1">
+                      <span className="text-xl font-bold font-serif text-academic-burgundy">
+                        ₹ {parseFloat(item.price).toFixed(0)}
+                      </span>
+                      {item.original_price_text && item.original_price_text !== String(parseInt(item.price, 10)) && (
+                        <span className="text-xs text-academic-muted font-mono">
+                          ({item.original_price_text})
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <p className="text-xs text-academic-muted leading-relaxed line-clamp-3">
@@ -297,9 +361,15 @@ export const Marketplace = () => {
                   {/* Seller / Buyer details */}
                   <div className="bg-academic-secondary/50 rounded-lg p-2.5 text-xs text-academic-muted space-y-1">
                     <p>
-                      <span className="font-semibold text-academic-primary">Seller:</span> {item.seller_name}{' '}
+                      <span className="font-semibold text-academic-primary">Seller:</span> {item.seller_name || item.seller_roll_no}{' '}
                       <span className="font-mono text-[10px]">({item.seller_roll_no})</span>
                     </p>
+                    {item.status === 'IN_PROGRESS' && (
+                      <p className="text-amber-800 font-medium">
+                        <span className="font-semibold">Deal In Progress:</span> Buyer {item.buyer_name || item.buyer_roll_no}{' '}
+                        <span className="font-mono text-[10px]">({item.buyer_roll_no})</span>
+                      </p>
+                    )}
                     {item.status === 'SOLD' && item.buyer_name && (
                       <p className="text-slate-700">
                         <span className="font-semibold">Purchased by:</span> {item.buyer_name}{' '}
@@ -309,7 +379,7 @@ export const Marketplace = () => {
                   </div>
                 </div>
 
-                {/* Purchase Button */}
+                {/* Actions */}
                 <div className="pt-2 border-t border-academic-border/60">
                   {item.status === 'AVAILABLE' ? (
                     isSeller ? (
@@ -317,17 +387,76 @@ export const Marketplace = () => {
                         Your Active Listing
                       </span>
                     ) : (
-                      <button
-                        onClick={() => openBuyModal(item)}
-                        className="w-full py-2.5 rounded-lg bg-emerald-700 text-white font-semibold text-xs shadow-xs hover:bg-emerald-800 transition-all flex items-center justify-center space-x-1.5"
-                      >
-                        <ShoppingBag className="w-3.5 h-3.5" />
-                        <span>Purchase Item (₹ {parseFloat(item.price).toFixed(0)})</span>
-                      </button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <a
+                          href={`mailto:${item.seller_roll_no.toLowerCase()}@jklu.edu.in?subject=Inquiry regarding ${encodeURIComponent(item.title)} on SkillSwap JKLU`}
+                          className="py-2.5 rounded-lg border border-academic-border bg-academic-secondary hover:bg-academic-border/60 text-academic-primary font-semibold text-xs transition-all flex items-center justify-center space-x-1"
+                          title="Contact seller via official JKLU email before purchasing"
+                        >
+                          <Mail className="w-3.5 h-3.5 text-academic-muted" />
+                          <span>Ask Seller</span>
+                        </a>
+
+                        <button
+                          onClick={() => openBuyModal(item)}
+                          className="py-2.5 rounded-lg bg-academic-burgundy text-white font-semibold text-xs shadow-xs hover:bg-academic-burgundy/90 transition-all flex items-center justify-center space-x-1"
+                        >
+                          <ShoppingBag className="w-3.5 h-3.5" />
+                          <span>Request to Buy</span>
+                        </button>
+                      </div>
+                    )
+                  ) : item.status === 'IN_PROGRESS' ? (
+                    isSeller ? (
+                      <div className="space-y-2">
+                        <div className="p-2 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-900 leading-snug">
+                          <strong>{item.buyer_name || item.buyer_roll_no}</strong> claimed this item. Coordinate in person and confirm once payment & handover are complete.
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => openCancelModal(item)}
+                            className="py-2 rounded-lg border border-rose-300 text-rose-700 bg-rose-50/50 hover:bg-rose-100 font-semibold text-xs transition-all"
+                          >
+                            Cancel Deal
+                          </button>
+                          <button
+                            onClick={() => openSellerConfirmModal(item)}
+                            className="py-2 rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 font-semibold text-xs shadow-xs transition-all flex items-center justify-center space-x-1"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Confirm Payment</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : isBuyer ? (
+                      <div className="space-y-2">
+                        <div className="p-2 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-900 leading-snug">
+                          You claimed this item! Please meet the seller on campus to pay and collect. The seller will mark it as Sold.
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <a
+                            href={`mailto:${item.seller_roll_no.toLowerCase()}@jklu.edu.in?subject=Coordination for ${encodeURIComponent(item.title)} on SkillSwap JKLU`}
+                            className="py-2 rounded-lg border border-academic-border bg-academic-secondary hover:bg-academic-border/60 text-academic-primary font-semibold text-xs transition-all flex items-center justify-center space-x-1"
+                          >
+                            <Mail className="w-3.5 h-3.5 text-academic-muted" />
+                            <span>Email Seller</span>
+                          </a>
+                          <button
+                            onClick={() => openCancelModal(item)}
+                            className="py-2 rounded-lg border border-rose-300 text-rose-700 bg-rose-50/50 hover:bg-rose-100 font-semibold text-xs transition-all"
+                          >
+                            Cancel Request
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="block text-center text-xs font-semibold text-amber-800 py-2 bg-amber-50 rounded-lg border border-amber-200">
+                        ⏳ Deal In Progress (Reserved)
+                      </span>
                     )
                   ) : item.status === 'SOLD' ? (
                     <span className="block text-center text-xs font-semibold text-slate-600 py-2 bg-slate-100 rounded-lg border border-slate-200">
-                      {isBuyer ? '✓ You Purchased This Item' : 'Sold to Student'}
+                      {isBuyer ? '✓ You Purchased This Item' : isSeller ? '✓ Sold to Student' : 'Sold to Student'}
                     </span>
                   ) : (
                     <span className="block text-center text-xs text-gray-500 py-2 bg-gray-100 rounded-lg">
@@ -451,8 +580,8 @@ export const Marketplace = () => {
         </form>
       </Modal>
 
-      {/* Buy Confirmation Modal */}
-      <Modal isOpen={buyModalOpen} onClose={() => setBuyModalOpen(false)} title="Confirm Academic Marketplace Purchase">
+      {/* Buy Request Modal */}
+      <Modal isOpen={buyModalOpen} onClose={() => setBuyModalOpen(false)} title={`Purchase Inquiry: ${targetListing?.title}`}>
         <div className="space-y-4 text-xs">
           {buyError && (
             <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg">
@@ -467,25 +596,81 @@ export const Marketplace = () => {
             </div>
           )}
 
+          {/* Item Details */}
           <div className="bg-academic-secondary/60 rounded-xl p-4 space-y-2 border border-academic-border">
-            <h4 className="font-serif font-bold text-base text-academic-primary">{targetListing?.title}</h4>
-            <p className="text-academic-muted">{targetListing?.description}</p>
-            <div className="pt-2 border-t border-academic-border/70 flex justify-between items-center">
-              <span className="font-semibold text-academic-muted">Total Price:</span>
-              <span className="text-xl font-bold font-serif text-academic-burgundy">
-                ₹ {targetListing ? parseFloat(targetListing.price).toFixed(2) : '0.00'}
-              </span>
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="font-serif font-bold text-base text-academic-primary">{targetListing?.title}</h4>
+                <p className="text-[11px] text-academic-muted uppercase font-semibold mt-0.5">
+                  {targetListing?.category} • Condition: {targetListing?.item_condition}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <span className="text-xl font-bold font-serif text-academic-burgundy block">
+                  ₹ {targetListing ? parseFloat(targetListing.price).toFixed(2) : '0.00'}
+                </span>
+                {targetListing?.original_price_text && (
+                  <span className="text-[10px] text-academic-muted font-mono block">
+                    ({targetListing.original_price_text})
+                  </span>
+                )}
+              </div>
+            </div>
+            <p className="text-academic-muted text-xs leading-relaxed pt-1 border-t border-academic-border/60">
+              {targetListing?.description}
+            </p>
+          </div>
+
+          {/* Seller Information & Inquiry Box */}
+          <div className="bg-academic-card border border-academic-border rounded-xl p-3.5 space-y-2 text-xs">
+            <p className="font-semibold text-academic-primary flex items-center space-x-1.5">
+              <User className="w-3.5 h-3.5 text-academic-burgundy" />
+              <span>Seller Information</span>
+            </p>
+            <div className="text-academic-muted space-y-1">
+              <p>Name: <span className="font-medium text-academic-primary">{targetListing?.seller_name || 'JKLU Student'}</span></p>
+              <p>Roll No: <span className="font-mono text-academic-primary">{targetListing?.seller_roll_no}</span></p>
+              <p>Official Email: <a href={`mailto:${targetListing?.seller_roll_no?.toLowerCase()}@jklu.edu.in`} className="text-academic-burgundy hover:underline font-mono">{targetListing?.seller_roll_no?.toLowerCase()}@jklu.edu.in</a></p>
+            </div>
+            <div className="pt-2">
+              <a
+                href={`mailto:${targetListing?.seller_roll_no?.toLowerCase()}@jklu.edu.in?subject=Inquiry regarding ${encodeURIComponent(targetListing?.title || '')} on SkillSwap JKLU&body=Hi ${encodeURIComponent(targetListing?.seller_name || '')},%0D%0A%0D%0AI saw your listing for "${encodeURIComponent(targetListing?.title || '')}" on SkillSwap JKLU for ₹${targetListing?.price}. Is this item still available and can we meet on campus?%0D%0A%0D%0AThanks,%0D%0A${encodeURIComponent(user?.name || '')} (${user?.roll_no})`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center space-x-1.5 text-xs font-semibold text-academic-burgundy hover:underline"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                <span>Ask / Inquire with Seller via Email First &rarr;</span>
+              </a>
             </div>
           </div>
 
-          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-indigo-900 space-y-1">
-            <p className="font-semibold flex items-center space-x-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Safe Concurrency Checkout Guarantee</span>
+          {/* Two-step Process Notice */}
+          <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-lg space-y-1.5">
+            <p className="font-semibold flex items-center space-x-1.5 text-xs">
+              <Clock className="w-3.5 h-3.5 text-amber-700" />
+              <span>How Peer Marketplace Works:</span>
             </p>
-            <p className="text-[11px] text-indigo-800">
-              Purchases are executed atomically in MySQL using conditional updates. If another peer claims this item concurrently, race conditions are blocked.
-            </p>
+            <ol className="list-decimal list-inside text-[11px] text-amber-800 space-y-1">
+              <li><strong>Reserve item:</strong> Clicking confirm puts this item <em>In Progress</em>, holding it for you.</li>
+              <li><strong>Meet on campus:</strong> Coordinate directly with the seller to inspect and pay (Cash/UPI).</li>
+              <li><strong>Seller confirms:</strong> Once paid and handed over, the seller confirms receipt to mark it as <em>Sold</em>.</li>
+            </ol>
+          </div>
+
+          {/* Confirmation Checkbox */}
+          <div className="p-3 rounded-lg border border-academic-border bg-academic-secondary/30">
+            <label className="flex items-start space-x-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={buyConfirmed}
+                onChange={(e) => setBuyConfirmed(e.target.checked)}
+                className="mt-0.5 w-4 h-4 text-academic-burgundy rounded border-academic-border focus:ring-academic-burgundy"
+              />
+              <span className="text-xs text-academic-primary font-medium">
+                Yes, I understand and want to initiate this purchase request with {targetListing?.seller_roll_no}.
+              </span>
+            </label>
           </div>
 
           <div className="pt-2 flex justify-end space-x-2">
@@ -499,10 +684,98 @@ export const Marketplace = () => {
             <button
               type="button"
               onClick={handleBuyConfirm}
-              disabled={buyLoading || !!buySuccess}
-              className="px-4 py-2 rounded-lg bg-emerald-700 text-white font-semibold shadow-xs hover:bg-emerald-800 disabled:opacity-50"
+              disabled={buyLoading || !buyConfirmed || !!buySuccess}
+              className="px-4 py-2 rounded-lg bg-academic-burgundy text-white font-semibold shadow-xs hover:bg-academic-burgundy/90 disabled:opacity-50 flex items-center space-x-1.5"
             >
-              {buyLoading ? 'Processing...' : 'Confirm & Buy'}
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>{buyLoading ? 'Submitting...' : 'Submit Buy Request'}</span>
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Seller Confirm Payment Modal */}
+      <Modal
+        isOpen={sellerModalOpen}
+        onClose={() => setSellerModalOpen(false)}
+        title="Confirm Payment & Item Handover"
+      >
+        <div className="space-y-4 text-xs">
+          {sellerError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg">
+              {sellerError}
+            </div>
+          )}
+
+          <div className="p-3.5 bg-academic-secondary/60 rounded-xl border border-academic-border space-y-2">
+            <h4 className="font-serif font-bold text-base text-academic-primary">{sellerTarget?.title}</h4>
+            <div className="text-academic-muted space-y-1">
+              <p>Amount: <strong className="text-academic-burgundy">₹ {sellerTarget ? parseFloat(sellerTarget.price).toFixed(2) : '0.00'}</strong></p>
+              <p>Buyer: <strong>{sellerTarget?.buyer_name || sellerTarget?.buyer_roll_no}</strong> ({sellerTarget?.buyer_roll_no})</p>
+            </div>
+          </div>
+
+          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg text-xs leading-relaxed">
+            Please confirm only after you have physically received payment and handed the item over to the student buyer. This will permanently mark the item as <strong>SOLD</strong>.
+          </div>
+
+          <div className="pt-2 flex justify-end space-x-2">
+            <button
+              type="button"
+              onClick={() => setSellerModalOpen(false)}
+              className="px-4 py-2 rounded-lg border border-academic-border bg-academic-card text-academic-muted hover:bg-academic-secondary"
+            >
+              Not Yet
+            </button>
+            <button
+              type="button"
+              onClick={handleSellerConfirm}
+              disabled={sellerLoading}
+              className="px-4 py-2 rounded-lg bg-emerald-700 text-white font-semibold shadow-xs hover:bg-emerald-800 disabled:opacity-50 flex items-center space-x-1.5"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>{sellerLoading ? 'Confirming...' : 'Yes, Confirm Payment Received'}</span>
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Cancel Deal Modal */}
+      <Modal
+        isOpen={cancelModalOpen}
+        onClose={() => setCancelModalOpen(false)}
+        title="Cancel In-Progress Deal"
+      >
+        <div className="space-y-4 text-xs">
+          {cancelError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg">
+              {cancelError}
+            </div>
+          )}
+
+          <p className="text-academic-primary">
+            Are you sure you want to cancel the deal for <strong className="font-serif">{cancelTarget?.title}</strong>?
+          </p>
+
+          <p className="text-academic-muted leading-relaxed">
+            The deal will be released, and the listing will immediately return to <strong>AVAILABLE</strong> status so other students can explore and request it.
+          </p>
+
+          <div className="pt-2 flex justify-end space-x-2">
+            <button
+              type="button"
+              onClick={() => setCancelModalOpen(false)}
+              className="px-4 py-2 rounded-lg border border-academic-border bg-academic-card text-academic-muted hover:bg-academic-secondary"
+            >
+              Keep Deal Active
+            </button>
+            <button
+              type="button"
+              onClick={handleCancelSale}
+              disabled={cancelLoading}
+              className="px-4 py-2 rounded-lg bg-rose-700 text-white font-semibold shadow-xs hover:bg-rose-800 disabled:opacity-50"
+            >
+              {cancelLoading ? 'Releasing...' : 'Confirm Release to Available'}
             </button>
           </div>
         </div>

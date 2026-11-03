@@ -36,11 +36,12 @@ class Listing(Base):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(
-        Enum("AVAILABLE", "SOLD", "REMOVED", name="listing_status_enum"),
+        Enum("AVAILABLE", "IN_PROGRESS", "SOLD", "REMOVED", "PENDING_REVIEW", name="listing_status_enum"),
         default="AVAILABLE",
         nullable=False
     )
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0.00, nullable=False)
+    original_price_text: Mapped[str | None] = mapped_column(String(150), nullable=True)
     category: Mapped[str] = mapped_column(String(50), nullable=False)
     item_condition: Mapped[str] = mapped_column(
         Enum("NEW", "LIKE_NEW", "GOOD", "FAIR", name="item_condition_enum"),

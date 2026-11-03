@@ -21,9 +21,20 @@ class StudentSkillResponse(BaseModel):
     created_at: datetime
 
 
+class StudentDesiredSkillResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    roll_no: str
+    skill_id: int
+    skill_name: Optional[str] = None
+    category: Optional[str] = None
+    created_at: datetime
+
+
 class StudentUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
+    department: Optional[str] = None
     d_id: Optional[int] = None
 
     @field_validator("name")
@@ -53,14 +64,16 @@ class StudentResponse(BaseModel):
     roll_no: str
     name: str
     email: str
-    phone: Optional[str]
-    d_id: int
+    phone: Optional[str] = None
+    department: str
     department_name: Optional[str] = None
+    d_id: int = 1
     program: Literal["BTECH", "BBA", "BDES"]
     admission_year: int
     reputation_points: int
     created_at: datetime
     skills: list[StudentSkillResponse] = []
+    desired_skills: list[StudentDesiredSkillResponse] = []
 
 
 class MentorResponse(BaseModel):
@@ -70,6 +83,7 @@ class MentorResponse(BaseModel):
     program: Literal["BTECH", "BBA", "BDES"]
     admission_year: int
     reputation_points: int
+    department: Optional[str] = None
     department_name: Optional[str] = None
     skill_id: int
     skill_name: str

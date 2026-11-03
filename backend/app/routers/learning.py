@@ -7,6 +7,7 @@ from app.models.student import Student
 from app.services.learning_service import LearningService
 from app.schemas.session import (
     SessionCreate,
+    SessionUpdate,
     SessionReschedule,
     SessionStatusUpdate,
     SessionResponse,
@@ -91,6 +92,19 @@ def reschedule_session(
     current_user: Student = Depends(get_current_active_user)
 ):
     return LearningService.reschedule_session(db, id, body, current_user)
+
+@router.patch(
+    "/sessions/{id}",
+    response_model=SessionResponse,
+    summary="Update session details (topic, mode, link, scheduled time)"
+)
+def update_session(
+    id: int,
+    body: SessionUpdate,
+    db: Session = Depends(get_db),
+    current_user: Student = Depends(get_current_active_user)
+):
+    return LearningService.update_session(db, id, body, current_user)
 
 # --- Reviews ---
 @router.post(

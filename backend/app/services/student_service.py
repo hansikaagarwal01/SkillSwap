@@ -5,8 +5,8 @@ from fastapi import HTTPException, status
 from math import ceil
 
 from app.models.student import Student
-from app.models.department import Department
-from app.models.skill import Skill, StudentSkill
+from app.models.department import PREDEFINED_DEPARTMENTS
+from app.models.skill import Skill, StudentSkill, StudentDesiredSkill
 from app.models.session import LearningSession
 from app.models.review import Review
 from app.schemas.student import (
@@ -14,6 +14,7 @@ from app.schemas.student import (
     StudentResponse,
     StudentSkillCreate,
     StudentSkillResponse,
+    StudentDesiredSkillResponse,
     MentorResponse
 )
 from app.schemas.common import PageResponse
@@ -25,6 +26,8 @@ PROFICIENCY_WEIGHTS = {
     "EXPERT": 4
 }
 
+DEPT_ID_TO_NAME = {d.d_id: d.name for d in PREDEFINED_DEPARTMENTS}
+
 class StudentService:
     @staticmethod
     def list_students(
@@ -32,6 +35,7 @@ class StudentService:
         program: Optional[str] = None,
         admission_year: Optional[int] = None,
         skill_id: Optional[int] = None,
+        desired_skill_id: Optional[int] = None,
         q: Optional[str] = None,
         page: int = 1,
         page_size: int = 10
@@ -47,6 +51,8 @@ class StudentService:
             query = query.filter(or_(Student.name.ilike(term), Student.roll_no.ilike(term)))
         if skill_id:
             query = query.join(StudentSkill, Student.roll_no == StudentSkill.roll_no).filter(StudentSkill.skill_id == skill_id)
+        if desired_skill_id:
+            query = query.join(StudentDesiredSkill, Student.roll_no == StudentDesiredSkill.roll_no).filter(StudentDesiredSkill.skill_id == desired_skill_id)
 
         total = query.count()
         total_pages = ceil(total / page_size) if total > 0 else 1
@@ -66,19 +72,31 @@ class StudentService:
                 )
                 for ss in s.skills
             ]
+            desired_resp = [
+                StudentDesiredSkillResponse(
+                    roll_no=ds.roll_no,
+                    skill_id=ds.skill_id,
+                    skill_name=ds.skill.name if ds.skill else None,
+                    category=ds.skill.category if ds.skill else None,
+                    created_at=ds.created_at
+                )
+                for ds in s.desired_skills
+            ]
             items.append(
                 StudentResponse(
                     roll_no=s.roll_no,
                     name=s.name,
                     email=s.email,
                     phone=s.phone,
+                    department=s.department,
+                    department_name=s.department,
                     d_id=s.d_id,
-                    department_name=s.department.name if s.department else None,
                     program=s.program,
                     admission_year=s.admission_year,
                     reputation_points=s.reputation_points,
                     created_at=s.created_at,
-                    skills=skills_resp
+                    skills=skills_resp,
+                    desired_skills=desired_resp
                 )
             )
 
@@ -111,19 +129,31 @@ class StudentService:
             )
             for ss in s.skills
         ]
+        desired_resp = [
+            StudentDesiredSkillResponse(
+                roll_no=ds.roll_no,
+                skill_id=ds.skill_id,
+                skill_name=ds.skill.name if ds.skill else None,
+                category=ds.skill.category if ds.skill else None,
+                created_at=ds.created_at
+            )
+            for ds in s.desired_skills
+        ]
 
         return StudentResponse(
             roll_no=s.roll_no,
             name=s.name,
             email=s.email,
             phone=s.phone,
+            department=s.department,
+            department_name=s.department,
             d_id=s.d_id,
-            department_name=s.department.name if s.department else None,
             program=s.program,
             admission_year=s.admission_year,
             reputation_points=s.reputation_points,
             created_at=s.created_at,
-            skills=skills_resp
+            skills=skills_resp,
+            desired_skills=desired_resp
         )
 
     @staticmethod
@@ -134,7 +164,7 @@ class StudentService:
         current_user: Student
     ) -> StudentResponse:
         # Authorization check: only owner or ADMIN
-        if current_user.roll_no != roll_no and current_user.auth_account.role != "ADMIN":
+        if current_user.roll_no != roll_no and current_user.role != "ADMIN":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={"code": "FORBIDDEN", "message": "You are not authorized to edit another student's profile."}
@@ -151,14 +181,6 @@ class StudentService:
             student.name = update_data.name
         if update_data.phone is not None:
             student.phone = update_data.phone
-        if update_data.d_id is not None:
-            dept = db.query(Department).filter(Department.d_id == update_data.d_id).first()
-            if not dept:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail={"code": "DEPARTMENT_NOT_FOUND", "message": "Specified department does not exist."}
-                )
-            student.d_id = update_data.d_id
 
         db.commit()
         db.refresh(student)
@@ -193,7 +215,7 @@ class StudentService:
         skill_in: StudentSkillCreate,
         current_user: Student
     ) -> StudentSkillResponse:
-        if current_user.roll_no != roll_no and current_user.auth_account.role != "ADMIN":
+        if current_user.roll_no != roll_no and current_user.role != "ADMIN":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={"code": "FORBIDDEN", "message": "Cannot modify skills of another student."}
@@ -216,27 +238,33 @@ class StudentService:
             existing.can_teach = skill_in.can_teach
             db.commit()
             db.refresh(existing)
-            target = existing
-        else:
-            new_ss = StudentSkill(
-                roll_no=roll_no,
-                skill_id=skill_in.skill_id,
-                proficiency_level=skill_in.proficiency_level,
-                can_teach=skill_in.can_teach
+            return StudentSkillResponse(
+                roll_no=existing.roll_no,
+                skill_id=existing.skill_id,
+                skill_name=skill.name,
+                category=skill.category,
+                proficiency_level=existing.proficiency_level,
+                can_teach=existing.can_teach,
+                created_at=existing.created_at
             )
-            db.add(new_ss)
-            db.commit()
-            db.refresh(new_ss)
-            target = new_ss
 
+        new_ss = StudentSkill(
+            roll_no=roll_no,
+            skill_id=skill_in.skill_id,
+            proficiency_level=skill_in.proficiency_level,
+            can_teach=skill_in.can_teach
+        )
+        db.add(new_ss)
+        db.commit()
+        db.refresh(new_ss)
         return StudentSkillResponse(
-            roll_no=target.roll_no,
-            skill_id=target.skill_id,
+            roll_no=new_ss.roll_no,
+            skill_id=new_ss.skill_id,
             skill_name=skill.name,
             category=skill.category,
-            proficiency_level=target.proficiency_level,
-            can_teach=target.can_teach,
-            created_at=target.created_at
+            proficiency_level=new_ss.proficiency_level,
+            can_teach=new_ss.can_teach,
+            created_at=new_ss.created_at
         )
 
     @staticmethod
@@ -246,7 +274,7 @@ class StudentService:
         skill_id: int,
         current_user: Student
     ) -> dict[str, str]:
-        if current_user.roll_no != roll_no and current_user.auth_account.role != "ADMIN":
+        if current_user.roll_no != roll_no and current_user.role != "ADMIN":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={"code": "FORBIDDEN", "message": "Cannot remove skills of another student."}
@@ -278,18 +306,14 @@ class StudentService:
         page: int = 1,
         page_size: int = 10
     ) -> PageResponse[MentorResponse]:
-        # Query mentors with can_teach = True
         query = db.query(
             Student,
             StudentSkill,
-            Skill,
-            Department
+            Skill
         ).join(
             StudentSkill, Student.roll_no == StudentSkill.roll_no
         ).join(
             Skill, StudentSkill.skill_id == Skill.skill_id
-        ).join(
-            Department, Student.d_id == Department.d_id
         ).filter(
             StudentSkill.can_teach == True
         )
@@ -314,13 +338,11 @@ class StudentService:
 
         min_weight = PROFICIENCY_WEIGHTS.get(min_proficiency.upper(), 0) if min_proficiency else 0
 
-        for student, student_skill, skill, dept in rows:
-            # Proficiency filter
+        for student, student_skill, skill in rows:
             current_weight = PROFICIENCY_WEIGHTS.get(student_skill.proficiency_level, 0)
             if current_weight < min_weight:
                 continue
 
-            # Calculate average review rating for this mentor on completed sessions
             ratings_query = db.query(
                 func.avg(Review.rating),
                 func.count(Review.rating)
@@ -335,11 +357,9 @@ class StudentService:
             avg_rating = float(ratings_query[0]) if ratings_query[0] is not None else None
             review_count = int(ratings_query[1]) if ratings_query[1] else 0
 
-            # Rating filter
             if min_rating is not None and (avg_rating is None or avg_rating < min_rating):
                 continue
 
-            # Completed sessions count
             comp_count = db.query(func.count(LearningSession.session_id)).filter(
                 LearningSession.mentor_roll_no == student.roll_no,
                 LearningSession.status == "COMPLETED"
@@ -353,7 +373,8 @@ class StudentService:
                     program=student.program,
                     admission_year=student.admission_year,
                     reputation_points=student.reputation_points,
-                    department_name=dept.name,
+                    department=student.department,
+                    department_name=student.department,
                     skill_id=skill.skill_id,
                     skill_name=skill.name,
                     proficiency_level=student_skill.proficiency_level,
@@ -363,7 +384,6 @@ class StudentService:
                 )
             )
 
-        # Sort by reputation DESC, rating DESC
         mentor_results.sort(
             key=lambda m: (m.reputation_points, m.avg_rating or 0.0),
             reverse=True

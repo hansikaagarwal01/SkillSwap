@@ -9,7 +9,7 @@ from app.models.listing import Listing
 from app.models.student import Student
 from app.models.session import LearningSession
 from app.models.review import Review
-from app.models.skill import Skill, StudentSkill
+from app.models.skill import Skill, StudentSkill, StudentDesiredSkill
 from app.schemas.listing import ListingCreate, ListingUpdate, ListingResponse
 from app.schemas.common import PageResponse
 from app.schemas.analytics import (
@@ -33,6 +33,7 @@ def _to_listing_response(listing: Listing) -> ListingResponse:
         description=listing.description,
         status=listing.status,
         price=listing.price,
+        original_price_text=listing.original_price_text,
         category=listing.category,
         item_condition=listing.item_condition,
         posted_date=listing.posted_date,
@@ -175,16 +176,16 @@ def delete_listing(
 
 def purchase_listing(db: Session, listing_id: int, buyer_roll: str) -> ListingResponse:
     """
-    Safe Concurrency Purchase:
-    Executes conditional atomic update:
+    Safe Concurrency Purchase Initiation:
+    Executes conditional atomic update reserving the item for the buyer:
     UPDATE listing 
-    SET status='SOLD', buyer_roll_no=:buyer, sold_at=NOW() 
+    SET status='IN_PROGRESS', buyer_roll_no=:buyer 
     WHERE listing_id=:id AND status='AVAILABLE' AND seller_roll_no <> :buyer
     """
     stmt = text(
         """
         UPDATE listing 
-        SET status = 'SOLD', buyer_roll_no = :buyer, sold_at = NOW() 
+        SET status = 'IN_PROGRESS', buyer_roll_no = :buyer 
         WHERE listing_id = :id AND status = 'AVAILABLE' AND seller_roll_no <> :buyer
         """
     )
@@ -200,6 +201,11 @@ def purchase_listing(db: Session, listing_id: int, buyer_roll: str) -> ListingRe
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="You cannot purchase your own listing",
+            )
+        if listing.status == "IN_PROGRESS":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This listing is currently in progress with another buyer",
             )
         if listing.status == "SOLD":
             raise HTTPException(
@@ -218,6 +224,86 @@ def purchase_listing(db: Session, listing_id: int, buyer_roll: str) -> ListingRe
 
     updated_listing = db.query(Listing).filter(Listing.listing_id == listing_id).first()
     return _to_listing_response(updated_listing)
+
+
+def confirm_sale(
+    db: Session,
+    listing_id: int,
+    seller_roll: str,
+    is_admin: bool = False,
+) -> ListingResponse:
+    """
+    Seller confirms receipt of payment and final item handover:
+    Transitions status from IN_PROGRESS to SOLD, setting sold_at = NOW().
+    """
+    listing = db.query(Listing).filter(Listing.listing_id == listing_id).first()
+    if not listing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
+
+    if listing.seller_roll_no != seller_roll and not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the seller can confirm receipt of payment and finalize the sale",
+        )
+
+    if listing.status != "IN_PROGRESS":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot confirm sale for listing with status '{listing.status}'. Must be 'IN_PROGRESS'.",
+        )
+
+    stmt = text(
+        """
+        UPDATE listing 
+        SET status = 'SOLD', sold_at = NOW() 
+        WHERE listing_id = :id AND status = 'IN_PROGRESS'
+        """
+    )
+    db.execute(stmt, {"id": listing_id})
+    db.commit()
+
+    db.refresh(listing)
+    return _to_listing_response(listing)
+
+
+def cancel_sale(
+    db: Session,
+    listing_id: int,
+    user_roll: str,
+    is_admin: bool = False,
+) -> ListingResponse:
+    """
+    Cancels an in-progress transaction, returning the listing to AVAILABLE status and clearing buyer_roll_no.
+    Allowed by the buyer, the seller, or an administrator.
+    """
+    listing = db.query(Listing).filter(Listing.listing_id == listing_id).first()
+    if not listing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
+
+    if listing.seller_roll_no != user_roll and listing.buyer_roll_no != user_roll and not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the buyer, seller, or an administrator can cancel this purchase",
+        )
+
+    if listing.status != "IN_PROGRESS":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot cancel purchase for listing with status '{listing.status}'. Must be 'IN_PROGRESS'.",
+        )
+
+    stmt = text(
+        """
+        UPDATE listing 
+        SET status = 'AVAILABLE', buyer_roll_no = NULL, sold_at = NULL 
+        WHERE listing_id = :id AND status = 'IN_PROGRESS'
+        """
+    )
+    db.execute(stmt, {"id": listing_id})
+    db.commit()
+
+    db.refresh(listing)
+    return _to_listing_response(listing)
 
 
 def get_my_listings(
@@ -311,6 +397,7 @@ def get_analytics_overview(db: Session) -> AnalyticsOverview:
     total_skills = db.query(func.count(Skill.skill_id)).scalar() or 0
     total_sessions = db.query(func.count(LearningSession.session_id)).scalar() or 0
     total_listings = db.query(func.count(Listing.listing_id)).scalar() or 0
+    total_desired_skills = db.query(func.count(StudentDesiredSkill.roll_no)).scalar() or 0
 
     # 1. Program-wise distribution (Query 27)
     prog_rows = db.execute(
@@ -412,6 +499,7 @@ def get_analytics_overview(db: Session) -> AnalyticsOverview:
         total_skills=total_skills,
         total_sessions=total_sessions,
         total_listings=total_listings,
+        total_desired_skills=total_desired_skills,
         programs=programs,
         session_statuses=session_statuses,
         top_skills=top_skills,

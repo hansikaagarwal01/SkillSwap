@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.main import app
 from app.db.session import SessionLocal
 from app.models.student import Student
-from app.models.session import LearningSession, ReputationHistory
+from app.models.session import LearningSession
 from app.models.review import Review
 from app.models.experience import Experience
 from app.core.security import create_access_token
@@ -117,10 +117,12 @@ def test_session_lifecycle_and_state_machine():
     new_mentor_rep = db.query(Student.reputation_points).filter(Student.roll_no == "2024BTECH002").scalar()
     assert new_mentor_rep == initial_mentor_rep + 10
 
-    # Verify reputation_history row exists
-    rep_entry = db.query(ReputationHistory).filter(ReputationHistory.session_id == session_id).first()
-    assert rep_entry is not None
-    assert rep_entry.points == 10
+    # Verify reputation audit on session
+    comp_sess = db.query(LearningSession).filter(LearningSession.session_id == session_id).first()
+    assert comp_sess is not None
+    assert comp_sess.reputation_awarded is True
+    assert comp_sess.points_awarded == 10
+    assert comp_sess.reputation_awarded_at is not None
     db.close()
 
     # 6. Idempotency & anti-double-award: completing again -> 409

@@ -45,6 +45,7 @@ class AnalyticsOverview(BaseModel):
     total_skills: int
     total_sessions: int
     total_listings: int
+    total_desired_skills: int = 0
     programs: List[ProgramDistributionItem]
     session_statuses: List[SessionStatusItem]
     top_skills: List[TopSkillItem]

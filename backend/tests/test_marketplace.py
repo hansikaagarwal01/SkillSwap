@@ -115,27 +115,56 @@ def test_purchase_lifecycle_and_business_rules():
     assert resp_self.status_code == 400
     assert "cannot purchase your own listing" in resp_self.json()["error"]["message"].lower()
 
-    # 2. Bhavya purchases the listing -> 200 OK
+    # 2. Bhavya requests to purchase the listing -> 200 OK, status IN_PROGRESS
     resp_buy = client.post(f"/api/v1/listings/{listing_id}/purchase", headers=headers_bhavya)
     assert resp_buy.status_code == 200
     bought = resp_buy.json()
-    assert bought["status"] == "SOLD"
+    assert bought["status"] == "IN_PROGRESS"
     assert bought["buyer_roll_no"] == "2024BTECH002"
-    assert bought["sold_at"] is not None
+    assert bought["sold_at"] is None
 
-    # 3. Chirag tries to purchase the already SOLD listing -> 409 Conflict
+    # 3. Chirag tries to purchase the IN_PROGRESS listing -> 409 Conflict
     resp_second_buy = client.post(f"/api/v1/listings/{listing_id}/purchase", headers=headers_chirag)
     assert resp_second_buy.status_code == 409
-    assert "already been sold" in resp_second_buy.json()["error"]["message"].lower()
+    assert "in progress" in resp_second_buy.json()["error"]["message"].lower()
 
-    # 4. Modifying or deleting a SOLD listing is rejected (400 Bad Request)
+    # 4. Cancel and re-purchase test
+    # Chirag cannot cancel Bhavya's deal -> 403 Forbidden
+    resp_cancel_chirag = client.post(f"/api/v1/listings/{listing_id}/cancel-sale", headers=headers_chirag)
+    assert resp_cancel_chirag.status_code == 403
+
+    # Bhavya cancels the purchase request -> 200 OK, status AVAILABLE
+    resp_cancel = client.post(f"/api/v1/listings/{listing_id}/cancel-sale", headers=headers_bhavya)
+    assert resp_cancel.status_code == 200
+    assert resp_cancel.json()["status"] == "AVAILABLE"
+    assert resp_cancel.json()["buyer_roll_no"] is None
+
+    # Bhavya re-requests purchase -> status IN_PROGRESS
+    resp_re_buy = client.post(f"/api/v1/listings/{listing_id}/purchase", headers=headers_bhavya)
+    assert resp_re_buy.status_code == 200
+    assert resp_re_buy.json()["status"] == "IN_PROGRESS"
+
+    # 5. Seller (Aarav) confirms payment and hands over item -> 200 OK, status SOLD
+    resp_confirm = client.post(f"/api/v1/listings/{listing_id}/confirm-sale", headers=headers_aarav)
+    assert resp_confirm.status_code == 200
+    sold_data = resp_confirm.json()
+    assert sold_data["status"] == "SOLD"
+    assert sold_data["buyer_roll_no"] == "2024BTECH002"
+    assert sold_data["sold_at"] is not None
+
+    # 6. Chirag tries to purchase the now SOLD listing -> 409 Conflict
+    resp_third_buy = client.post(f"/api/v1/listings/{listing_id}/purchase", headers=headers_chirag)
+    assert resp_third_buy.status_code == 409
+    assert "already been sold" in resp_third_buy.json()["error"]["message"].lower()
+
+    # 7. Modifying or deleting a SOLD listing is rejected (400 Bad Request)
     resp_edit_sold = client.patch(f"/api/v1/listings/{listing_id}", json={"price": 400.00}, headers=headers_aarav)
     assert resp_edit_sold.status_code == 400
 
     resp_del_sold = client.delete(f"/api/v1/listings/{listing_id}", headers=headers_aarav)
     assert resp_del_sold.status_code == 400
 
-    # 5. Check Bhavya's purchases endpoint
+    # 8. Check Bhavya's purchases endpoint
     resp_purchases = client.get("/api/v1/listings/purchases", headers=headers_bhavya)
     assert resp_purchases.status_code == 200
     bought_ids = [item["listing_id"] for item in resp_purchases.json()["items"]]
@@ -147,9 +176,10 @@ def test_concurrent_marketplace_purchases():
     CONCURRENCY TEST:
     Multiple threads concurrently attempt to purchase the EXACT SAME available listing.
     Ensures safe atomic concurrency:
-    UPDATE listing SET status='SOLD', buyer_roll_no=:buyer, sold_at=NOW()
+    UPDATE listing SET status='IN_PROGRESS', buyer_roll_no=:buyer
     WHERE listing_id=:id AND status='AVAILABLE' AND seller_roll_no <> :buyer;
     Exactly 1 buyer must succeed (HTTP 200), all other concurrent attempts must receive HTTP 409.
+    Then the seller confirms the sale to transition to SOLD.
     """
     aarav_token = get_auth_token("2024BTECH001", "ADMIN")
     headers_aarav = {"Authorization": f"Bearer {aarav_token}"}
@@ -186,13 +216,19 @@ def test_concurrent_marketplace_purchases():
     assert len(successes) == 1, f"Expected exactly 1 purchase success, got {len(successes)} (results: {status_codes})"
     assert len(conflicts) == 4, f"Expected 4 conflicts, got {len(conflicts)} (results: {status_codes})"
 
-    # Verify DB state directly
+    # Verify DB state directly (status should be IN_PROGRESS)
     db = SessionLocal()
-    final_listing = db.query(Listing).filter(Listing.listing_id == target_listing_id).first()
-    assert final_listing.status == "SOLD"
-    assert final_listing.buyer_roll_no in buyer_rolls
-    assert final_listing.sold_at is not None
+    in_progress_listing = db.query(Listing).filter(Listing.listing_id == target_listing_id).first()
+    assert in_progress_listing.status == "IN_PROGRESS"
+    assert in_progress_listing.buyer_roll_no in buyer_rolls
+    assert in_progress_listing.sold_at is None
     db.close()
+
+    # Aarav (seller) confirms the sale
+    resp_confirm = client.post(f"/api/v1/listings/{target_listing_id}/confirm-sale", headers=headers_aarav)
+    assert resp_confirm.status_code == 200
+    assert resp_confirm.json()["status"] == "SOLD"
+    assert resp_confirm.json()["sold_at"] is not None
 
 
 def test_leaderboard_and_analytics_overview():

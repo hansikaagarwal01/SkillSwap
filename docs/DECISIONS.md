@@ -38,3 +38,38 @@
 - **Decision:**
   - Provide `docker-compose.yml` configured for port 3306 (primary `skillswap` + `skillswap_test`).
   - Support running against local native MySQL 8.0 Server (running on port 3307 or 3306) via `.env` configuration.
+
+## Decision 8: Schema Consolidation (Elimination of Redundant Tables)
+- **Context:** Initial design used 11 tables including several 1:1 entities (`auth_account`), transient token single-use tables (`email_verification_token`), lookup tables (`department`), and duplicate logging tables (`reputation_history`).
+- **Decision:**
+  - Consolidate `auth_account` directly into `student` (merging `password_hash`, `account_status`, `email_verified`, `token_version`).
+  - Consolidate `email_verification_token` directly into `student` (`verification_token_hash`, `verification_token_expires_at`).
+  - Consolidate `reputation_history` into `learning_session` (`points_awarded`, `reputation_awarded`, `reputation_awarded_at`).
+  - Results in a streamlined, highly cohesive schema with zero unnecessary JOIN overhead.
+
+## Decision 9: Strict BCNF Normalization on Student Entity
+- **Context:** In normalization analysis, having both `department` and `program` on `student` created a transitive functional dependency ($roll\_no \rightarrow department \rightarrow program$) where `department` is not a superkey.
+- **Decision:**
+  - Retain `program ENUM('BTECH', 'BBA', 'BDES')` on `student`, which matches the student's immutable roll number (`chk_student_program_matches_roll`).
+  - Remove `department` from the database table. Provide a backward-compatible `@property` helper on the `Student` model that dynamically derives academic affiliation from `program`.
+  - With every determinant in `student` being a candidate key (`roll_no` or `email`), the entity strictly satisfies Boyce-Codd Normal Form (BCNF) and Third Normal Form (3NF).
+
+## Decision 10: Authentic Survey Data Integration & Desired Skills Association
+- **Context:** The platform must reflect the actual 36 JKLU student survey responses without fabricated demo students or skills. The survey collected both possessed skills ("What skills do you currently possess?") and desired skills ("What skills would you like to learn?").
+- **Decision:**
+  - Introduce `student_desired_skill` (composite PK `roll_no`, `skill_id`) to capture learning goals separately from possessed abilities.
+  - Set `can_teach = FALSE` and `proficiency = 'BEGINNER'` for survey-imported skills until students explicitly enable mentoring.
+  - Survey imported students start with `account_status = 'UNVERIFIED'` and `password_hash = NULL`, allowing authentic students to claim their profiles upon registration with their verified `@jklu.edu.in` email.
+
+## Decision 11: Survey Submission Audit Trail (`survey_import_audit`)
+- **Context:** Academic evaluation requires full reproducibility and accountability for how survey rows were mapped into normalized relational entities.
+- **Decision:**
+  - Retain all 36 survey responses verbatim in `survey_import_audit`, recording raw inputs, normalized roll numbers, duplicate merging decisions, and flagged listings.
+  - Two manual roll-number corrections were applied based on verified survey entries: `004` $\to$ `2026BBA004` and `147btech2026` $\to$ `2026BTECH147`.
+  - Duplicate entries were merged by timestamp recency (`2025BTECH023` Dhruv Tyagi, `2025BTECH022` Dhanyashree Sen).
+
+## Decision 12: Test Database Isolation (`skillswap_test`) vs Survey Database (`skillswap`)
+- **Context:** Running automated test suites must never mutate, delete, or inject mock data into the production survey database.
+- **Decision:**
+  - Configure `skillswap` strictly for live student survey data (34 students, 102 skills, 9 listings, 0 mock reviews/sessions).
+  - Configure `skillswap_test` as an ephemeral test fixture database for pytest execution, populated by `conftest.py` with multi-user concurrency cohorts.

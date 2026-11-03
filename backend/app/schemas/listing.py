@@ -25,7 +25,7 @@ class ListingUpdate(BaseModel):
     price: Optional[Decimal] = Field(None, ge=0)
     category: Optional[str] = None
     item_condition: Optional[Literal["NEW", "LIKE_NEW", "GOOD", "FAIR"]] = None
-    status: Optional[Literal["AVAILABLE", "REMOVED"]] = None
+    status: Optional[Literal["AVAILABLE", "IN_PROGRESS", "SOLD", "REMOVED"]] = None
 
 
 class ListingResponse(BaseModel):
@@ -38,8 +38,9 @@ class ListingResponse(BaseModel):
     buyer_name: Optional[str] = None
     title: str
     description: str
-    status: Literal["AVAILABLE", "SOLD", "REMOVED"]
+    status: Literal["AVAILABLE", "IN_PROGRESS", "SOLD", "REMOVED", "PENDING_REVIEW"]
     price: Decimal
+    original_price_text: Optional[str] = None
     category: str
     item_condition: Literal["NEW", "LIKE_NEW", "GOOD", "FAIR"]
     posted_date: datetime

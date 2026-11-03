@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
-from sqlalchemy import String, Integer, Boolean, Text, DateTime, Enum, ForeignKey, Index, func
+from sqlalchemy import String, Integer, Boolean, Text, DateTime, Enum, ForeignKey, Index, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
@@ -11,17 +11,20 @@ if TYPE_CHECKING:
 class Skill(Base):
     __tablename__ = "skill"
     __table_args__ = (
+        UniqueConstraint("name", name="uq_skill_name"),
+        Index("idx_skill_name", "name"),
         Index("idx_skill_category", "category"),
     )
 
     skill_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
     category: Mapped[str] = mapped_column(String(50), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
 
     # Relationships
     students: Mapped[list["StudentSkill"]] = relationship("StudentSkill", back_populates="skill")
+    desired_by_students: Mapped[list["StudentDesiredSkill"]] = relationship("StudentDesiredSkill", back_populates="skill")
     sessions: Mapped[list["LearningSession"]] = relationship("LearningSession", back_populates="skill")
 
 
@@ -52,3 +55,26 @@ class StudentSkill(Base):
     # Relationships
     student: Mapped["Student"] = relationship("Student", back_populates="skills")
     skill: Mapped["Skill"] = relationship("Skill", back_populates="students")
+
+
+class StudentDesiredSkill(Base):
+    __tablename__ = "student_desired_skill"
+    __table_args__ = (
+        Index("idx_desired_skill_skill", "skill_id"),
+    )
+
+    roll_no: Mapped[str] = mapped_column(
+        String(12),
+        ForeignKey("student.roll_no", ondelete="CASCADE", onupdate="CASCADE"),
+        primary_key=True
+    )
+    skill_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("skill.skill_id", ondelete="CASCADE", onupdate="CASCADE"),
+        primary_key=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+
+    # Relationships
+    student: Mapped["Student"] = relationship("Student", back_populates="desired_skills")
+    skill: Mapped["Skill"] = relationship("Skill", back_populates="desired_by_students")

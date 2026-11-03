@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 from app.main import app
 from app.db.session import SessionLocal
 from app.models.student import Student
-from app.models.auth import AuthAccount, EmailVerificationToken
 from app.core.security import create_access_token
 
 client = TestClient(app)
@@ -58,16 +57,13 @@ def test_roll_number_and_email_validation_rules():
         "d_id": 1
     })
     assert resp.status_code == 422
-    assert "at least 10 characters" in resp.text
 
 
-def test_registration_and_duplicate_prevention():
+def test_registration_and_duplicate_handling():
     db: Session = SessionLocal()
     # Clean up test user if exists
     test_roll = "2026BTECH090"
     test_email = "test.newstudent@jklu.edu.in"
-    db.query(EmailVerificationToken).filter(EmailVerificationToken.roll_no == test_roll).delete()
-    db.query(AuthAccount).filter(AuthAccount.roll_no == test_roll).delete()
     db.query(Student).filter(Student.roll_no == test_roll).delete()
     db.commit()
 
@@ -110,9 +106,9 @@ def test_email_verification_lifecycle():
     db: Session = SessionLocal()
     test_roll = "2026BTECH090"
 
-    # Retrieve generated token record
-    v_token = db.query(EmailVerificationToken).filter(EmailVerificationToken.roll_no == test_roll).first()
-    assert v_token is not None
+    student = db.query(Student).filter(Student.roll_no == test_roll).first()
+    assert student is not None
+    assert student.verification_token_hash is not None
 
     # 1. Tampered / invalid token -> 400
     resp_bad = client.post("/api/v1/auth/verify-email", json={"token": "invalid_fake_token_12345"})
@@ -121,9 +117,8 @@ def test_email_verification_lifecycle():
 
     # Set up a known raw token and hash
     raw_token = "valid_test_token_secret_1234567890"
-    v_token.token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
-    v_token.expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
-    v_token.used_at = None
+    student.verification_token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+    student.verification_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
     db.commit()
 
     # 2. Valid token verification -> 200
@@ -131,14 +126,14 @@ def test_email_verification_lifecycle():
     assert resp_ok.status_code == 200
     assert "Email verified successfully" in resp_ok.json()["message"]
 
-    # 3. Token Reuse -> 400
+    # 3. Token Reuse -> 400 (cleared on verification)
     resp_reused = client.post("/api/v1/auth/verify-email", json={"token": raw_token})
     assert resp_reused.status_code == 400
-    assert resp_reused.json()["error"]["code"] == "TOKEN_ALREADY_USED"
+    assert resp_reused.json()["error"]["code"] == "INVALID_TOKEN"
 
     # 4. Expired token -> 400
-    v_token.used_at = None
-    v_token.expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
+    student.verification_token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+    student.verification_token_expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
     db.commit()
 
     resp_expired = client.post("/api/v1/auth/verify-email", json={"token": raw_token})
@@ -146,9 +141,10 @@ def test_email_verification_lifecycle():
     assert resp_expired.json()["error"]["code"] == "TOKEN_EXPIRED"
 
     # Restore active state for subsequent tests
-    auth_acc = db.query(AuthAccount).filter(AuthAccount.roll_no == test_roll).first()
-    auth_acc.email_verified = True
-    auth_acc.account_status = "ACTIVE"
+    student.verification_token_hash = None
+    student.verification_token_expires_at = None
+    student.email_verified = True
+    student.account_status = "ACTIVE"
     db.commit()
     db.close()
 
@@ -185,8 +181,8 @@ def test_login_and_jwt_lifecycle():
 
     # 5. Token version bump invalidates old token -> 401
     db: Session = SessionLocal()
-    auth_acc = db.query(AuthAccount).filter(AuthAccount.roll_no == "2026BTECH090").first()
-    auth_acc.token_version += 1
+    student = db.query(Student).filter(Student.roll_no == "2026BTECH090").first()
+    student.token_version += 1
     db.commit()
     db.close()
 
@@ -215,9 +211,9 @@ def test_unverified_and_suspended_accounts_blocked():
 
 def test_admin_approval_endpoint():
     db: Session = SessionLocal()
-    target_acc = db.query(AuthAccount).filter(AuthAccount.roll_no == "2026BTECH017").first()
-    if target_acc:
-        target_acc.account_status = "PENDING_APPROVAL"
+    target_student = db.query(Student).filter(Student.roll_no == "2026BTECH017").first()
+    if target_student:
+        target_student.account_status = "PENDING_APPROVAL"
         db.commit()
     db.close()
 

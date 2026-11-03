@@ -8,11 +8,12 @@ from math import ceil
 from app.core.config import settings
 from app.models.student import Student
 from app.models.skill import Skill, StudentSkill
-from app.models.session import LearningSession, ReputationHistory
+from app.models.session import LearningSession
 from app.models.review import Review
 from app.models.experience import Experience
 from app.schemas.session import (
     SessionCreate,
+    SessionUpdate,
     SessionReschedule,
     SessionStatusUpdate,
     SessionResponse,
@@ -48,11 +49,10 @@ class LearningService:
                 detail={"code": "MENTOR_NOT_FOUND", "message": f"Mentor {mentor_roll} not found."}
             )
 
-        # Verify mentor can teach this skill
+        # Verify mentor possesses this skill
         teaching_skill = db.query(StudentSkill).filter(
             StudentSkill.roll_no == mentor_roll,
-            StudentSkill.skill_id == req.skill_id,
-            StudentSkill.can_teach == True
+            StudentSkill.skill_id == req.skill_id
         ).first()
 
         if not teaching_skill:
@@ -262,19 +262,13 @@ class LearningService:
             )
 
         try:
-            # 1. Update session status
+            # 1. Update session status and record reputation reward audit
             session.status = "COMPLETED"
+            session.reputation_awarded = True
+            session.points_awarded = settings.REPUTATION_PER_SESSION
+            session.reputation_awarded_at = datetime.now(timezone.utc)
 
-            # 2. Insert reputation_history (+10 points)
-            rep_entry = ReputationHistory(
-                roll_no=session.mentor_roll_no,
-                session_id=session.session_id,
-                points=settings.REPUTATION_PER_SESSION,
-                reason=f"Completed mentoring session: {session.topic}"
-            )
-            db.add(rep_entry)
-
-            # 3. Increment mentor's reputation points
+            # 2. Increment mentor's reputation points
             mentor = db.query(Student).filter(Student.roll_no == session.mentor_roll_no).with_for_update().first()
             if mentor:
                 mentor.reputation_points += settings.REPUTATION_PER_SESSION
@@ -322,6 +316,51 @@ class LearningService:
         session.scheduled_at = req.scheduled_at
         # Returning to REQUESTED pending other party acceptance
         session.status = "REQUESTED"
+        db.commit()
+        db.refresh(session)
+        return LearningService.to_session_response(session, user_roll)
+
+    @staticmethod
+    def update_session(
+        db: Session,
+        session_id: int,
+        req: SessionUpdate,
+        current_user: Student
+    ) -> SessionResponse:
+        user_roll = current_user.roll_no
+        session = db.query(LearningSession).filter(LearningSession.session_id == session_id).first()
+
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "SESSION_NOT_FOUND", "message": "Session not found."}
+            )
+
+        is_mentor = (session.mentor_roll_no == user_roll)
+        is_learner = (session.learner_roll_no == user_roll)
+        is_admin = (current_user.auth_account.role == "ADMIN")
+
+        if not (is_mentor or is_learner or is_admin):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"code": "FORBIDDEN", "message": "You are not a participant in this session."}
+            )
+
+        if session.status in ("COMPLETED", "CANCELLED", "REJECTED"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"code": "SESSION_CLOSED", "message": f"Cannot edit a session that is {session.status}."}
+            )
+
+        if req.topic is not None:
+            session.topic = req.topic
+        if req.mode is not None:
+            session.mode = req.mode
+        if req.scheduled_at is not None:
+            session.scheduled_at = req.scheduled_at
+        if req.meeting_link is not None:
+            session.meeting_link = req.meeting_link
+
         db.commit()
         db.refresh(session)
         return LearningService.to_session_response(session, user_roll)
@@ -591,6 +630,9 @@ class LearningService:
             meeting_link=link,
             status=s.status,
             credit_cost=s.credit_cost,
+            points_awarded=s.points_awarded,
+            reputation_awarded=s.reputation_awarded,
+            reputation_awarded_at=s.reputation_awarded_at,
             created_at=s.created_at,
             updated_at=s.updated_at,
             has_review=has_rev

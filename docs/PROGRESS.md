@@ -2,17 +2,26 @@
 
 | Phase | Description | Status | Gate Output / Summary |
 |---|---|---|---|
-| **0 Inspect** | Scaffolding, AGENTS.md, DECISIONS.md, docker-compose, MySQL check | **COMPLETED** | MySQL 8.0.46 verified connected on port 3307; `skillswap` & `skillswap_test` ready; Python 3.12.10 & Node v24.13.0 verified |
-| **1 Database** | Alembic migrations, schema.sql, seed.sql, ER & normalization docs | **COMPLETED** | Migrations applied & verified; seed loaded (34 students, 18 skills, 37 sessions); `SHOW CREATE TABLE` sanity verified |
-| **2 SQL demos** | test_queries.sql (34 queries) | **COMPLETED** | All 34 queries executed top-to-bottom on MySQL 8 with 100% pass rate; real outputs verified |
-| **3 Backend core**| Core configs, models, schemas, db session, health check | **COMPLETED** | `/docs` loads, `/health` 200 OK (DB connected); pytest 3/3 passed |
-| **4 Auth** | Register, verify email, login, JWT, rate limit, me | **COMPLETED** | All 6 auth tests passed (identity regex, lookalike domain rejection, verification tokens, JWT versioning, admin approval) |
-| **5 Students/Skills** | Student profile, skill explorer, mentor discovery | **COMPLETED** | All 5 student & skill tests passed (profile CRUD, immutability, skill catalog, mentor discovery filters) |
-| **6 Learning** | Sessions state machine, reviews, experiences, reputation transaction | **COMPLETED** | All 5 learning & concurrency tests passed (state machine, SELECT FOR UPDATE locking, multi-threaded completion, reviews, portfolio CRUD) |
-| **7 Marketplace** | Listings, atomic conditional purchase, leaderboard & analytics | **COMPLETED** | All 5 marketplace tests passed (CRUD, filters, self-purchase blocked, 5-thread concurrent atomic purchase, leaderboard DENSE_RANK, analytics overview) |
-| **8 Frontend** | React 18, Vite, Tailwind tokens, all 20+ pages wired | **COMPLETED** | `npm run build` succeeds (dist bundle verified); full browser E2E session verified and recorded |
-| **9 Verify** | Full pytest suite against `skillswap_test`, all SQL runs | **COMPLETED** | 24/24 automated pytest tests passing; all 34 demonstration SQL queries executed with 100% pass rate |
-| **10 Docs** | Final README, API reference, verification report | **COMPLETED** | Comprehensive academic README, DECISIONS.md, PROGRESS.md, SCHEMA.md, and ER.md verified |
+| **0 Inspect** | Scaffolding, AGENTS.md, DECISIONS.md, docker-compose, MySQL check | **COMPLETED** | MySQL 8.0.46 verified connected on port 3306; `skillswap` & `skillswap_test` ready; Python 3.12.10 & Node v24.13.0 verified |
+| **1 Database** | Alembic migrations, schema.sql, seed.sql, ER & normalization docs | **COMPLETED** | Migrations applied & verified; `schema.sql` and `seed.sql` generated exclusively from 36 survey responses; `SHOW CREATE TABLE` verified |
+| **2 Survey Data Integration** | 36 survey rows imported, normalization, audit trail | **COMPLETED** | 34 unique students (2 merged duplicates, 2 confirmed roll corrections); 102 distinct skills (89 possessed, 83 desired); 9 listings (original price text preserved); 36 audit rows |
+| **3 SQL Demos** | test_queries.sql (34 queries) | **COMPLETED** | All 34 queries (43 statements total) executed top-to-bottom on live MySQL 8 `skillswap` DB with 100% pass rate (0 errors); collation-safe |
+| **4 Backend Core & API** | Core configs, models, schemas, claim-profile auth, desired skills endpoints | **COMPLETED** | `/docs` loads, `/health` 200 OK (DB connected); claim account flow for survey students; student directory with desired skill filtering |
+| **5 Learning & Marketplace** | Session state machine, conditional purchase, reputation audit | **COMPLETED** | Zero fabricated sessions or reviews in production DB; atomic purchase logic preserves original price strings |
+| **6 Frontend Cleanup** | React 18, beige palette, removed demo logins & emojis, dual directory | **COMPLETED** | Removed demo login dropdown and fake credentials; real live analytics; clean Leaderboard; Student Directory & Mentors tabs |
+| **7 Frontend Build** | Vite production bundle | **COMPLETED** | `npm run build` succeeds (dist bundle verified with zero JSX or build errors) |
+| **8 Automated Testing** | Pytest test suite against `skillswap_test` | **COMPLETED** | 24/24 automated pytest tests passing across auth, health, learning, marketplace, and students_skills; 100% isolated from `skillswap` |
+| **9 Docs & Reports** | Final reports, README, SQL demonstration log | **COMPLETED** | `survey_import_report.md`, `records_requiring_manual_review.csv`, updated ADRs, ER diagram, and final evaluation audit report |
 
-## Open Issues / Notes
-- None. Native MySQL 8.0 instance configured with `skillswap` and `skillswap_test` databases.
+## Database Status
+- **Production Database (`skillswap`):**
+  - Students: 34 (100% authentic survey responses)
+  - Skills: 102
+  - Possessed Skills (`student_skill`): 89
+  - Desired Skills (`student_desired_skill`): 83
+  - Listings (`listing`): 9
+  - Survey Import Audit (`survey_import_audit`): 36
+  - Sessions (`learning_session`): 0 (Zero fake sessions)
+  - Reviews (`review`): 0 (Zero fake reviews)
+- **Test Database (`skillswap_test`):**
+  - Ephemeral test fixture cohort for automated concurrency and state machine tests.

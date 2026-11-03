@@ -1,11 +1,19 @@
 import re
 from datetime import datetime
 from typing import Optional, Literal
-from pydantic import BaseModel, EmailStr, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator, model_validator
 from email_validator import validate_email, EmailNotValidError
 from app.core.security import validate_password_strength
 
 ROLL_NO_REGEX = re.compile(r"^(20[0-9]{2})(BTECH|BBA|BDES)[0-9]{3}$")
+
+DEPT_ID_MAP = {
+    1: "Computer Science and Engineering",
+    2: "Artificial Intelligence and Data Science",
+    3: "Electronics and Communication Engineering",
+    4: "Institute of Management",
+    5: "Institute of Design"
+}
 
 class RegisterRequest(BaseModel):
     roll_no: str
@@ -13,7 +21,8 @@ class RegisterRequest(BaseModel):
     email: str
     password: str
     phone: Optional[str] = None
-    d_id: int
+    department: Optional[str] = None
+    d_id: Optional[int] = None
 
     @field_validator("roll_no")
     @classmethod
@@ -66,6 +75,21 @@ class RegisterRequest(BaseModel):
             raise ValueError("Phone number must contain between 7 and 15 digits/valid characters.")
         return v
 
+    @model_validator(mode="after")
+    def resolve_department(self):
+        if not self.department:
+            if self.d_id and self.d_id in DEPT_ID_MAP:
+                self.department = DEPT_ID_MAP[self.d_id]
+            else:
+                # Default by program
+                if "BBA" in self.roll_no:
+                    self.department = "Institute of Management"
+                elif "BDES" in self.roll_no:
+                    self.department = "Institute of Design"
+                else:
+                    self.department = "Computer Science and Engineering"
+        return self
+
 
 class LoginRequest(BaseModel):
     roll_no: str
@@ -101,12 +125,15 @@ class TokenResponse(BaseModel):
 
 
 class UserMeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     roll_no: str
     name: str
     email: str
-    phone: Optional[str]
-    d_id: int
-    department_name: Optional[str]
+    phone: Optional[str] = None
+    department: str
+    d_id: int = 1
+    department_name: Optional[str] = None
     program: Literal["BTECH", "BBA", "BDES"]
     admission_year: int
     reputation_points: int

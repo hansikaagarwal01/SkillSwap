@@ -150,20 +150,30 @@ export const Analytics = () => {
             <Calendar className="w-4 h-4 text-academic-muted" />
           </div>
 
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.session_statuses}>
-                <XAxis dataKey="status" tick={{ fontSize: 11 }} />
-                <YAxis allowDecimals={false} />
-                <Tooltip formatter={(value, name, item) => [`${value} sessions (${item.payload.percentage_share}%)`, 'Count']} />
-                <Bar dataKey="session_count" fill="#7A1C28" radius={[4, 4, 0, 0]}>
-                  {data.session_statuses.map((entry) => (
-                    <Cell key={`cell-${entry.status}`} fill={STATUS_COLORS[entry.status] || '#7A1C28'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {data.total_sessions === 0 ? (
+            <div className="h-64 flex flex-col items-center justify-center text-center p-6 space-y-2">
+              <Calendar className="w-8 h-8 text-academic-muted" />
+              <p className="font-serif font-bold text-sm text-academic-primary">No Mentorship Sessions Recorded Yet</p>
+              <p className="text-xs text-academic-muted max-w-xs">
+                As students book, conduct, and complete free peer sessions, lifecycle state distribution will populate here dynamically.
+              </p>
+            </div>
+          ) : (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data.session_statuses}>
+                  <XAxis dataKey="status" tick={{ fontSize: 11 }} />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip formatter={(value, name, item) => [`${value} sessions (${item.payload.percentage_share}%)`, 'Count']} />
+                  <Bar dataKey="session_count" fill="#7A1C28" radius={[4, 4, 0, 0]}>
+                    {data.session_statuses.map((entry) => (
+                      <Cell key={`cell-${entry.status}`} fill={STATUS_COLORS[entry.status] || '#7A1C28'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
           <div className="flex flex-wrap justify-center gap-3 text-xs pt-2 border-t border-academic-border/60">
             {data.session_statuses.map((s) => (

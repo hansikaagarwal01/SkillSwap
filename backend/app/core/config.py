@@ -8,8 +8,8 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
 
     # Database
-    DATABASE_URL: str = "mysql+pymysql://skillswap:skillswap_pass@127.0.0.1:3307/skillswap?charset=utf8mb4"
-    TEST_DATABASE_URL: str = "mysql+pymysql://skillswap:skillswap_pass@127.0.0.1:3307/skillswap_test?charset=utf8mb4"
+    DATABASE_URL: str = "mysql+pymysql://skillswap:skillswap_pass@127.0.0.1:3306/skillswap?charset=utf8mb4"
+    TEST_DATABASE_URL: str = "mysql+pymysql://skillswap:skillswap_pass@127.0.0.1:3306/skillswap_test?charset=utf8mb4"
 
     # Security
     JWT_SECRET_KEY: str = "skillswap-dev-secret-key-jklu-2026-very-secure-jwt"
@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     REQUIRE_ADMIN_APPROVAL: bool = False
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=("backend/.env", ".env"),
         env_file_encoding="utf-8",
         extra="ignore"
     )

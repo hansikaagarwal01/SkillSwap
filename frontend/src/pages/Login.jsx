@@ -49,12 +49,6 @@ export const Login = () => {
     }
   };
 
-  const handleQuickFill = (r, p) => {
-    setRollNo(r);
-    setPassword(p);
-    setError('');
-  };
-
   return (
     <div className="max-w-md mx-auto py-12 px-4">
       <div className="bg-academic-card border border-academic-border rounded-2xl shadow-xl p-8 space-y-6">
@@ -140,32 +134,15 @@ export const Login = () => {
           </button>
         </form>
 
-        {/* Demo Quick Fills */}
-        <div className="pt-4 border-t border-academic-border space-y-2">
-          <div className="flex items-center space-x-1 text-xs font-semibold text-academic-muted">
-            <Sparkles className="w-3.5 h-3.5 text-academic-gold" />
-            <span>Academic Demonstration Credentials:</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <button
-              type="button"
-              onClick={() => handleQuickFill('2024BTECH001', 'Admin@JKLU2026')}
-              className="p-2 rounded-lg border border-academic-border bg-academic-secondary/60 hover:bg-academic-secondary text-left transition-colors"
-            >
-              <p className="font-semibold text-academic-primary">Aarav (Admin)</p>
-              <p className="text-[10px] text-academic-muted font-mono">2024BTECH001</p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickFill('2024BTECH002', 'Student@JKLU2026')}
-              className="p-2 rounded-lg border border-academic-border bg-academic-secondary/60 hover:bg-academic-secondary text-left transition-colors"
-            >
-              <p className="font-semibold text-academic-primary">Bhavya (Student)</p>
-              <p className="text-[10px] text-academic-muted font-mono">2024BTECH002</p>
-            </button>
-          </div>
+        {/* Survey Claim Notice */}
+        <div className="pt-4 border-t border-academic-border space-y-1.5 text-xs text-academic-muted">
+          <p className="font-semibold text-academic-primary">Took the campus survey?</p>
+          <p>
+            Your student profile has been imported! To activate your account and set your login password, please{' '}
+            <Link to="/register" className="font-semibold text-academic-burgundy hover:underline">
+              claim your profile here
+            </Link>.
+          </p>
         </div>
 
         <div className="text-center text-xs text-academic-muted pt-2">

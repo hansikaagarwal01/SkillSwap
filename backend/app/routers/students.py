@@ -25,6 +25,7 @@ def list_students(
     program: Optional[Literal["BTECH", "BBA", "BDES"]] = Query(None, description="Academic program"),
     admission_year: Optional[int] = Query(None, description="Admission cohort year"),
     skill_id: Optional[int] = Query(None, description="Possessed skill ID"),
+    desired_skill_id: Optional[int] = Query(None, description="Desired skill ID to learn"),
     q: Optional[str] = Query(None, description="Search by name or roll number"),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
@@ -35,6 +36,7 @@ def list_students(
         program=program,
         admission_year=admission_year,
         skill_id=skill_id,
+        desired_skill_id=desired_skill_id,
         q=q,
         page=page,
         page_size=page_size

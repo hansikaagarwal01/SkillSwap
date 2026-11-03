@@ -22,13 +22,16 @@ export const StatusBadge = ({ status }) => {
     REJECTED: 'bg-rose-50 text-rose-800 border-rose-200',
     CANCELLED: 'bg-gray-100 text-gray-600 border-gray-200',
     AVAILABLE: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    IN_PROGRESS: 'bg-amber-50 text-amber-900 border-amber-300 font-semibold',
     SOLD: 'bg-slate-100 text-slate-700 border-slate-300',
     REMOVED: 'bg-gray-100 text-gray-500 border-gray-200',
   };
 
+  const label = status === 'IN_PROGRESS' ? 'IN PROGRESS' : status;
+
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${styles[status] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>
-      {status}
+      {label}
     </span>
   );
 };
