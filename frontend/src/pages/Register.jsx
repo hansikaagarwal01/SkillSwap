@@ -162,7 +162,7 @@ export const Register = () => {
               <input
                 type="text"
                 required
-                placeholder="e.g. 2025BTECH027"
+                placeholder="e.g. XXXX"
                 value={formData.roll_no}
                 onChange={(e) => setFormData({ ...formData, roll_no: e.target.value.toUpperCase() })}
                 className="w-full px-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary text-sm font-mono placeholder:text-academic-muted/50 focus:outline-none focus:ring-2 focus:ring-academic-burgundy/40"
@@ -184,7 +184,7 @@ export const Register = () => {
               <input
                 type="text"
                 required
-                placeholder="e.g. Hansika Agarwal"
+                placeholder="e.g. John Doe"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary text-sm placeholder:text-academic-muted/50 focus:outline-none focus:ring-2 focus:ring-academic-burgundy/40"
@@ -200,7 +200,7 @@ export const Register = () => {
               <input
                 type="email"
                 required
-                placeholder="hansikaagarwal@jklu.edu.in"
+                placeholder="e.g. student@example.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary text-sm placeholder:text-academic-muted/50 focus:outline-none focus:ring-2 focus:ring-academic-burgundy/40"
@@ -214,7 +214,7 @@ export const Register = () => {
               </label>
               <input
                 type="tel"
-                placeholder="9829012345"
+                placeholder="e.g. 9876543210"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary text-sm placeholder:text-academic-muted/50 focus:outline-none focus:ring-2 focus:ring-academic-burgundy/40"
@@ -266,7 +266,7 @@ export const Register = () => {
               <input
                 type="password"
                 required
-                placeholder="Min 10 characters"
+                placeholder="Enter your password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary text-sm focus:outline-none focus:ring-2 focus:ring-academic-burgundy/40"
@@ -280,7 +280,7 @@ export const Register = () => {
               <input
                 type="password"
                 required
-                placeholder="Re-enter password"
+                placeholder="Re-enter your password"
                 value={formData.confirm_password}
                 onChange={(e) => setFormData({ ...formData, confirm_password: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary text-sm focus:outline-none focus:ring-2 focus:ring-academic-burgundy/40"

@@ -402,7 +402,7 @@ export const Profile = () => {
             </label>
             <input
               type="tel"
-              placeholder="9829011001"
+              placeholder="e.g. 9876543210"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="w-full p-2.5 rounded-lg border border-academic-border bg-academic-bg text-academic-primary focus:outline-none focus:ring-1 focus:ring-academic-burgundy"

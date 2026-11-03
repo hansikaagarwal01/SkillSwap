@@ -173,7 +173,7 @@ export const Admin = () => {
             <input
               type="text"
               required
-              placeholder="e.g. 2026BTECH013"
+              placeholder="e.g. XXXX"
               value={targetRoll}
               onChange={(e) => setTargetRoll(e.target.value.toUpperCase())}
               className="w-full p-2.5 rounded-lg border border-academic-border bg-academic-bg text-academic-primary font-mono focus:outline-none focus:ring-1 focus:ring-academic-burgundy"

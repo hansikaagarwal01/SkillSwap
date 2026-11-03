@@ -92,7 +92,7 @@ export const Login = () => {
               <input
                 type="text"
                 required
-                placeholder="e.g. 2025BTECH027"
+                placeholder="e.g. XXXX"
                 value={rollNo}
                 onChange={(e) => {
                   setRollNo(e.target.value.toUpperCase());
@@ -113,7 +113,7 @@ export const Login = () => {
               <input
                 type="password"
                 required
-                placeholder="••••••••••••"
+                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
