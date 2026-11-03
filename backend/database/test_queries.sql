@@ -459,3 +459,52 @@ INNER JOIN student_desired_skill sds ON sk.skill_id = sds.skill_id
 GROUP BY sk.skill_id, sk.name, sk.category
 ORDER BY students_seeking DESC, sk.name ASC
 LIMIT 15;
+
+-- ----------------------------------------------------------------------------
+-- QUERY 35: Marketplace Inquiries Received by Seller with Relational Details
+-- Purpose: Retrieve all student inquiries received by sellers, joining buyer profile, listing, and inquiry status.
+-- Output Columns: inquiry_id, listing_title, buyer_roll, buyer_name, buyer_email, inquiry_status, created_at
+-- ----------------------------------------------------------------------------
+SELECT mi.inquiry_id,
+       l.title AS listing_title,
+       mi.buyer_roll_no AS buyer_roll,
+       b.name AS buyer_name,
+       b.email AS buyer_email,
+       mi.inquiry_status,
+       mi.created_at
+FROM marketplace_inquiry mi
+INNER JOIN listing l ON mi.listing_id = l.listing_id
+INNER JOIN student b ON mi.buyer_roll_no = b.roll_no
+ORDER BY mi.created_at DESC;
+
+-- ----------------------------------------------------------------------------
+-- QUERY 36: Unread Notifications for Students (Recipient Count and Message Details)
+-- Purpose: Identify active unread notifications per student to power UI notification badges.
+-- Output Columns: recipient_roll_no, recipient_name, unread_count, latest_notification
+-- ----------------------------------------------------------------------------
+SELECT n.recipient_roll_no,
+       s.name AS recipient_name,
+       COUNT(n.notification_id) AS unread_count,
+       MAX(n.created_at) AS latest_notification_time
+FROM notification n
+INNER JOIN student s ON n.recipient_roll_no = s.roll_no
+WHERE n.is_read = FALSE
+GROUP BY n.recipient_roll_no, s.name
+ORDER BY unread_count DESC;
+
+-- ----------------------------------------------------------------------------
+-- QUERY 37: Marketplace Listing Demand (Inquiry Volume per Available Listing)
+-- Purpose: Aggregate buyer interest per listing to identify high-demand student items.
+-- Output Columns: listing_id, title, seller_name, price, inquiry_count
+-- ----------------------------------------------------------------------------
+SELECT l.listing_id,
+       l.title,
+       s.name AS seller_name,
+       l.price,
+       COUNT(mi.inquiry_id) AS total_inquiries
+FROM listing l
+INNER JOIN student s ON l.seller_roll_no = s.roll_no
+LEFT JOIN marketplace_inquiry mi ON l.listing_id = mi.listing_id
+GROUP BY l.listing_id, l.title, s.name, l.price
+ORDER BY total_inquiries DESC, l.price ASC;
+

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { StatusBadge } from '../components/Badge';
@@ -20,14 +20,21 @@ import {
   Mail,
   Check,
   X,
+  MessageSquare,
+  Send,
+  Inbox,
+  SendHorizontal,
 } from 'lucide-react';
 
 export const Marketplace = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState('ALL'); // ALL, MINE, PURCHASES
+  const initialTab = searchParams.get('tab') || 'ALL';
+  const [activeTab, setActiveTab] = useState(initialTab); // ALL, MINE, INQUIRIES, SENT_INQUIRIES, PURCHASES
   const [listings, setListings] = useState([]);
+  const [inquiries, setInquiries] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -50,6 +57,14 @@ export const Marketplace = () => {
   const [postLoading, setPostLoading] = useState(false);
   const [postError, setPostError] = useState('');
 
+  // Send Inquiry Modal
+  const [inquiryModalOpen, setInquiryModalOpen] = useState(false);
+  const [inquiryTarget, setInquiryTarget] = useState(null);
+  const [inquiryMessage, setInquiryMessage] = useState('Hi, I am interested in purchasing this item. Is it still available?');
+  const [inquiryLoading, setInquiryLoading] = useState(false);
+  const [inquirySuccess, setInquirySuccess] = useState('');
+  const [inquiryError, setInquiryError] = useState('');
+
   // Buy Request Modal
   const [buyModalOpen, setBuyModalOpen] = useState(false);
   const [targetListing, setTargetListing] = useState(null);
@@ -70,43 +85,68 @@ export const Marketplace = () => {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelError, setCancelError] = useState('');
 
-  const fetchListings = async () => {
+  // Sync tab with URL query parameter
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['ALL', 'MINE', 'INQUIRIES', 'SENT_INQUIRIES', 'PURCHASES'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    setPage(1);
+    setSearchParams(newTab === 'ALL' ? {} : { tab: newTab });
+  };
+
+  const fetchData = async () => {
     setLoading(true);
     try {
-      let endpoint = '/listings';
-      const params = new URLSearchParams();
-      params.append('page', page);
-      params.append('page_size', 9);
-
-      if (activeTab === 'MINE') {
-        endpoint = '/listings/mine';
-      } else if (activeTab === 'PURCHASES') {
-        endpoint = '/listings/purchases';
+      if (activeTab === 'INQUIRIES' || activeTab === 'SENT_INQUIRIES') {
+        const endpoint =
+          activeTab === 'INQUIRIES'
+            ? '/marketplace/inquiries/received'
+            : '/marketplace/inquiries/sent';
+        const resp = await api.get(`${endpoint}?page=${page}&page_size=10`);
+        setInquiries(resp.data.items || []);
+        setTotal(resp.data.total);
+        setTotalPages(resp.data.total_pages);
       } else {
-        if (category) params.append('category', category);
-        if (itemCondition) params.append('item_condition', itemCondition);
-        if (search) params.append('search', search);
-      }
+        let endpoint = '/listings';
+        const params = new URLSearchParams();
+        params.append('page', page);
+        params.append('page_size', 9);
 
-      const resp = await api.get(`${endpoint}?${params.toString()}`);
-      setListings(resp.data.items);
-      setTotal(resp.data.total);
-      setTotalPages(resp.data.total_pages);
+        if (activeTab === 'MINE') {
+          endpoint = '/listings/mine';
+        } else if (activeTab === 'PURCHASES') {
+          endpoint = '/listings/purchases';
+        } else {
+          if (category) params.append('category', category);
+          if (itemCondition) params.append('item_condition', itemCondition);
+          if (search) params.append('search', search);
+        }
+
+        const resp = await api.get(`${endpoint}?${params.toString()}`);
+        setListings(resp.data.items || []);
+        setTotal(resp.data.total);
+        setTotalPages(resp.data.total_pages);
+      }
     } catch (err) {
-      console.error('Failed to load listings', err);
+      console.error('Failed to load marketplace data', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchListings();
+    fetchData();
   }, [page, activeTab, category, itemCondition]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     setPage(1);
-    fetchListings();
+    fetchData();
   };
 
   const handlePostSubmit = async (e) => {
@@ -120,7 +160,7 @@ export const Marketplace = () => {
       });
       setPostModalOpen(false);
       setPostForm({ title: '', description: '', price: '', category: 'Textbooks', item_condition: 'GOOD' });
-      fetchListings();
+      fetchData();
     } catch (err) {
       setPostError(err.response?.data?.error?.message || 'Failed to create listing.');
     } finally {
@@ -128,6 +168,49 @@ export const Marketplace = () => {
     }
   };
 
+  // Inquiry Handlers
+  const openInquiryModal = (item) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    setInquiryTarget(item);
+    setInquiryMessage('Hi, I am interested in purchasing this item. Is it still available?');
+    setInquirySuccess('');
+    setInquiryError('');
+    setInquiryModalOpen(true);
+  };
+
+  const handleInquirySubmit = async (e) => {
+    e.preventDefault();
+    setInquiryLoading(true);
+    setInquiryError('');
+    setInquirySuccess('');
+    try {
+      await api.post(`/marketplace/listings/${inquiryTarget.listing_id}/inquiries`, {
+        message: inquiryMessage,
+      });
+      setInquirySuccess('Inquiry sent successfully! The seller has received an in-app notification and email.');
+      setTimeout(() => {
+        setInquiryModalOpen(false);
+      }, 1500);
+    } catch (err) {
+      setInquiryError(err.response?.data?.error?.message || 'Failed to send inquiry.');
+    } finally {
+      setInquiryLoading(false);
+    }
+  };
+
+  const handleUpdateInquiryStatus = async (inquiryId, newStatus) => {
+    try {
+      await api.patch(`/marketplace/inquiries/${inquiryId}/status`, { status: newStatus });
+      fetchData();
+    } catch (err) {
+      alert(err.response?.data?.error?.message || 'Failed to update status');
+    }
+  };
+
+  // Buy Request Handlers
   const openBuyModal = (item) => {
     if (!user) {
       navigate('/login');
@@ -149,7 +232,7 @@ export const Marketplace = () => {
       setBuySuccess('Purchase request submitted! The item is now marked In Progress. Coordinate on campus with the seller.');
       setTimeout(() => {
         setBuyModalOpen(false);
-        fetchListings();
+        fetchData();
       }, 1400);
     } catch (err) {
       setBuyError(err.response?.data?.error?.message || 'Purchase request could not be completed.');
@@ -170,7 +253,7 @@ export const Marketplace = () => {
     try {
       await api.post(`/listings/${sellerTarget.listing_id}/confirm-sale`);
       setSellerModalOpen(false);
-      fetchListings();
+      fetchData();
     } catch (err) {
       setSellerError(err.response?.data?.error?.message || 'Failed to confirm sale.');
     } finally {
@@ -190,7 +273,7 @@ export const Marketplace = () => {
     try {
       await api.post(`/listings/${cancelTarget.listing_id}/cancel-sale`);
       setCancelModalOpen(false);
-      fetchListings();
+      fetchData();
     } catch (err) {
       setCancelError(err.response?.data?.error?.message || 'Failed to cancel deal.');
     } finally {
@@ -205,7 +288,7 @@ export const Marketplace = () => {
         <div>
           <h1 className="text-3xl font-serif font-bold text-academic-primary">Campus Student Marketplace</h1>
           <p className="text-xs text-academic-muted mt-1">
-            Exchange course textbooks, lab supplies, calculators, and electronics safely between verified students.
+            Exchange textbooks, lab gear, and study supplies directly between verified JKLU students.
           </p>
         </div>
 
@@ -220,25 +303,24 @@ export const Marketplace = () => {
         )}
       </div>
 
-      {/* Tabs and Filters */}
+      {/* Navigation Tabs and Filters */}
       <div className="bg-academic-card border border-academic-border rounded-xl p-4 shadow-xs space-y-4">
         {/* Navigation Tabs */}
-        <div className="flex items-center space-x-1 border-b border-academic-border/70 pb-3">
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-academic-border/70 pb-3">
           {[
             { id: 'ALL', label: 'Explore Marketplace' },
             ...(user
               ? [
                   { id: 'MINE', label: 'My Listings' },
+                  { id: 'INQUIRIES', label: 'Inquiries Received' },
+                  { id: 'SENT_INQUIRIES', label: 'My Sent Inquiries' },
                   { id: 'PURCHASES', label: 'My Purchases' },
                 ]
               : []),
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => {
-                setActiveTab(tab.id);
-                setPage(1);
-              }}
+              onClick={() => handleTabChange(tab.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                 activeTab === tab.id
                   ? 'bg-academic-burgundy text-white shadow-xs'
@@ -302,172 +384,339 @@ export const Marketplace = () => {
         )}
       </div>
 
-      {/* Listings Grid */}
-      {loading ? (
-        <div className="py-20 text-center text-xs text-academic-muted">Loading marketplace listings...</div>
-      ) : listings.length === 0 ? (
-        <div className="py-20 text-center bg-academic-card border border-academic-border rounded-xl p-8 space-y-2">
-          <ShoppingBag className="w-10 h-10 text-academic-muted mx-auto" />
-          <p className="font-serif font-bold text-base text-academic-primary">No items found</p>
-          <p className="text-xs text-academic-muted">Try adjusting your filters or post a new item.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {listings.map((item) => {
-            const isSeller = user?.roll_no === item.seller_roll_no;
-            const isBuyer = user?.roll_no === item.buyer_roll_no;
-
-            return (
+      {/* View 1: Inquiries Received Tab */}
+      {activeTab === 'INQUIRIES' ? (
+        loading ? (
+          <div className="py-20 text-center text-xs text-academic-muted">Loading received inquiries...</div>
+        ) : inquiries.length === 0 ? (
+          <div className="py-20 text-center bg-academic-card border border-academic-border rounded-xl p-8 space-y-2">
+            <Inbox className="w-10 h-10 text-academic-muted mx-auto" />
+            <p className="font-serif font-bold text-base text-academic-primary">No inquiries received yet</p>
+            <p className="text-xs text-academic-muted">When prospective buyers ask about your items, their messages appear here.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {inquiries.map((inq) => (
               <div
-                key={item.listing_id}
-                className="bg-academic-card border border-academic-border rounded-xl p-5 shadow-xs card-hover flex flex-col justify-between space-y-4"
+                key={inq.inquiry_id}
+                className="bg-academic-card border border-academic-border rounded-xl p-5 shadow-xs space-y-3"
               >
-                <div className="space-y-3">
-                  {/* Top Tags */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-1.5">
-                      <span className="text-[10px] font-semibold text-academic-accent uppercase tracking-wider bg-academic-secondary px-2 py-0.5 rounded border border-academic-border">
-                        {item.category}
-                      </span>
-                      <span className="text-[10px] font-mono text-academic-muted bg-academic-secondary/60 px-1.5 py-0.5 rounded">
-                        {item.item_condition}
-                      </span>
-                    </div>
-
-                    <StatusBadge status={item.status} />
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 border-b border-academic-border/60 pb-3">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-academic-muted tracking-wider">Item Inquired</span>
+                    <h3 className="font-serif font-bold text-base text-academic-primary">{inq.listing_title}</h3>
+                    <p className="text-xs font-semibold text-academic-burgundy mt-0.5">₹ {parseFloat(inq.listing_price).toFixed(2)}</p>
                   </div>
 
-                  {/* Title & Price */}
+                  <div className="flex items-center space-x-2">
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                        inq.inquiry_status === 'PENDING'
+                          ? 'bg-amber-50 text-amber-900 border-amber-300'
+                          : inq.inquiry_status === 'RESPONDED'
+                          ? 'bg-blue-50 text-blue-900 border-blue-200'
+                          : 'bg-gray-100 text-gray-700 border-gray-200'
+                      }`}
+                    >
+                      {inq.inquiry_status}
+                    </span>
+                    <span className="text-[11px] text-academic-muted font-mono">
+                      {new Date(inq.created_at).toLocaleString([], {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Buyer Information & Message */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                  <div className="bg-academic-secondary/50 rounded-lg p-3 space-y-1">
+                    <p className="font-semibold text-academic-primary">Buyer Details:</p>
+                    <p>Name: <span className="font-medium text-academic-primary">{inq.buyer_name}</span></p>
+                    <p>Roll No: <span className="font-mono text-academic-primary">{inq.buyer_roll_no}</span></p>
+                    <p>
+                      Email:{' '}
+                      <a href={`mailto:${inq.buyer_email}`} className="text-academic-burgundy hover:underline font-mono">
+                        {inq.buyer_email}
+                      </a>
+                    </p>
+                  </div>
+
+                  <div className="md:col-span-2 bg-academic-secondary/30 rounded-lg p-3 space-y-1 border border-academic-border/50">
+                    <p className="font-semibold text-academic-primary">Buyer Inquiry Message:</p>
+                    <p className="text-academic-muted leading-relaxed whitespace-pre-line">{inq.message}</p>
+                  </div>
+                </div>
+
+                {/* Seller Actions */}
+                <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-academic-border/50">
+                  <a
+                    href={`mailto:${inq.buyer_email}?subject=Re: Inquiry regarding ${encodeURIComponent(inq.listing_title)} on SkillSwap JKLU`}
+                    className="px-3 py-1.5 rounded-lg border border-academic-border bg-academic-card hover:bg-academic-secondary text-academic-primary font-semibold text-xs flex items-center space-x-1"
+                  >
+                    <Mail className="w-3.5 h-3.5 text-academic-muted" />
+                    <span>Email Buyer</span>
+                  </a>
+
+                  {inq.inquiry_status === 'PENDING' && (
+                    <button
+                      onClick={() => handleUpdateInquiryStatus(inq.inquiry_id, 'RESPONDED')}
+                      className="px-3 py-1.5 rounded-lg bg-academic-secondary text-academic-primary font-semibold text-xs hover:bg-academic-border/50 transition-colors"
+                    >
+                      Mark Responded
+                    </button>
+                  )}
+
+                  {inq.inquiry_status !== 'CLOSED' && (
+                    <button
+                      onClick={() => handleUpdateInquiryStatus(inq.inquiry_id, 'CLOSED')}
+                      className="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 bg-gray-50 hover:bg-gray-100 font-semibold text-xs transition-colors"
+                    >
+                      Close Inquiry
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : activeTab === 'SENT_INQUIRIES' ? (
+        /* View 2: Sent Inquiries Tab */
+        loading ? (
+          <div className="py-20 text-center text-xs text-academic-muted">Loading sent inquiries...</div>
+        ) : inquiries.length === 0 ? (
+          <div className="py-20 text-center bg-academic-card border border-academic-border rounded-xl p-8 space-y-2">
+            <SendHorizontal className="w-10 h-10 text-academic-muted mx-auto" />
+            <p className="font-serif font-bold text-base text-academic-primary">No sent inquiries</p>
+            <p className="text-xs text-academic-muted">You haven't contacted any sellers yet. Explore the marketplace to find items.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {inquiries.map((inq) => (
+              <div
+                key={inq.inquiry_id}
+                className="bg-academic-card border border-academic-border rounded-xl p-5 shadow-xs space-y-3"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 border-b border-academic-border/60 pb-3">
                   <div>
-                    <h3 className="font-serif font-bold text-base text-academic-primary leading-tight">
-                      {item.title}
-                    </h3>
-                    <div className="flex items-baseline space-x-2 mt-1">
-                      <span className="text-xl font-bold font-serif text-academic-burgundy">
-                        ₹ {parseFloat(item.price).toFixed(0)}
-                      </span>
-                      {item.original_price_text && item.original_price_text !== String(parseInt(item.price, 10)) && (
-                        <span className="text-xs text-academic-muted font-mono">
-                          ({item.original_price_text})
+                    <span className="text-[10px] uppercase font-bold text-academic-muted tracking-wider">Item Inquired</span>
+                    <h3 className="font-serif font-bold text-base text-academic-primary">{inq.listing_title}</h3>
+                    <p className="text-xs font-semibold text-academic-burgundy mt-0.5">₹ {parseFloat(inq.listing_price).toFixed(2)}</p>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                        inq.inquiry_status === 'PENDING'
+                          ? 'bg-amber-50 text-amber-900 border-amber-300'
+                          : inq.inquiry_status === 'RESPONDED'
+                          ? 'bg-blue-50 text-blue-900 border-blue-200'
+                          : 'bg-gray-100 text-gray-700 border-gray-200'
+                      }`}
+                    >
+                      {inq.inquiry_status}
+                    </span>
+                    <span className="text-[11px] text-academic-muted font-mono">
+                      {new Date(inq.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                  <div className="bg-academic-secondary/50 rounded-lg p-3 space-y-1">
+                    <p className="font-semibold text-academic-primary">Seller Details:</p>
+                    <p>Name: <span className="font-medium text-academic-primary">{inq.seller_name}</span></p>
+                    <p>Roll No: <span className="font-mono text-academic-primary">{inq.seller_roll_no}</span></p>
+                    <p>
+                      Email:{' '}
+                      <a href={`mailto:${inq.seller_email}`} className="text-academic-burgundy hover:underline font-mono">
+                        {inq.seller_email}
+                      </a>
+                    </p>
+                  </div>
+
+                  <div className="md:col-span-2 bg-academic-secondary/30 rounded-lg p-3 space-y-1 border border-academic-border/50">
+                    <p className="font-semibold text-academic-primary">Your Message to Seller:</p>
+                    <p className="text-academic-muted leading-relaxed whitespace-pre-line">{inq.message}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : (
+        /* View 3: Listing Cards Grid (Explore, Mine, Purchases) */
+        loading ? (
+          <div className="py-20 text-center text-xs text-academic-muted">Loading marketplace listings...</div>
+        ) : listings.length === 0 ? (
+          <div className="py-20 text-center bg-academic-card border border-academic-border rounded-xl p-8 space-y-2">
+            <ShoppingBag className="w-10 h-10 text-academic-muted mx-auto" />
+            <p className="font-serif font-bold text-base text-academic-primary">No items found</p>
+            <p className="text-xs text-academic-muted">Try adjusting your filters or post a new item.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {listings.map((item) => {
+              const isSeller = user?.roll_no === item.seller_roll_no;
+              const isBuyer = user?.roll_no === item.buyer_roll_no;
+
+              return (
+                <div
+                  key={item.listing_id}
+                  className="bg-academic-card border border-academic-border rounded-xl p-5 shadow-xs card-hover flex flex-col justify-between space-y-4"
+                >
+                  <div className="space-y-3">
+                    {/* Top Tags */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-1.5">
+                        <span className="text-[10px] font-semibold text-academic-accent uppercase tracking-wider bg-academic-secondary px-2 py-0.5 rounded border border-academic-border">
+                          {item.category}
                         </span>
+                        <span className="text-[10px] font-mono text-academic-muted bg-academic-secondary/60 px-1.5 py-0.5 rounded">
+                          {item.item_condition}
+                        </span>
+                      </div>
+
+                      <StatusBadge status={item.status} />
+                    </div>
+
+                    {/* Title & Price */}
+                    <div>
+                      <h3 className="font-serif font-bold text-base text-academic-primary leading-tight">
+                        {item.title}
+                      </h3>
+                      <div className="flex items-baseline space-x-2 mt-1">
+                        <span className="text-xl font-bold font-serif text-academic-burgundy">
+                          ₹ {parseFloat(item.price).toFixed(0)}
+                        </span>
+                        {item.original_price_text && item.original_price_text !== String(parseInt(item.price, 10)) && (
+                          <span className="text-xs text-academic-muted font-mono">
+                            ({item.original_price_text})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-academic-muted leading-relaxed line-clamp-3">
+                      {item.description}
+                    </p>
+
+                    {/* Seller / Buyer details */}
+                    <div className="bg-academic-secondary/50 rounded-lg p-2.5 text-xs text-academic-muted space-y-1">
+                      <p>
+                        <span className="font-semibold text-academic-primary">Seller:</span> {item.seller_name || item.seller_roll_no}{' '}
+                        <span className="font-mono text-[10px]">({item.seller_roll_no})</span>
+                      </p>
+                      {item.status === 'IN_PROGRESS' && (
+                        <p className="text-amber-800 font-medium">
+                          <span className="font-semibold">Deal In Progress:</span> Buyer {item.buyer_name || item.buyer_roll_no}{' '}
+                          <span className="font-mono text-[10px]">({item.buyer_roll_no})</span>
+                        </p>
+                      )}
+                      {item.status === 'SOLD' && item.buyer_name && (
+                        <p className="text-slate-700">
+                          <span className="font-semibold">Purchased by:</span> {item.buyer_name}{' '}
+                          <span className="font-mono text-[10px]">({item.buyer_roll_no})</span>
+                        </p>
                       )}
                     </div>
                   </div>
 
-                  <p className="text-xs text-academic-muted leading-relaxed line-clamp-3">
-                    {item.description}
-                  </p>
+                  {/* Actions */}
+                  <div className="pt-2 border-t border-academic-border/60">
+                    {item.status === 'AVAILABLE' ? (
+                      isSeller ? (
+                        <span className="block text-center text-xs font-semibold text-academic-muted py-2 bg-academic-secondary/60 rounded-lg">
+                          Your Active Listing
+                        </span>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => openInquiryModal(item)}
+                            className="py-2.5 rounded-lg border border-academic-border bg-academic-secondary hover:bg-academic-border/60 text-academic-primary font-semibold text-xs transition-all flex items-center justify-center space-x-1"
+                            title="Send inquiry to seller"
+                          >
+                            <Mail className="w-3.5 h-3.5 text-academic-muted" />
+                            <span>Ask Seller</span>
+                          </button>
 
-                  {/* Seller / Buyer details */}
-                  <div className="bg-academic-secondary/50 rounded-lg p-2.5 text-xs text-academic-muted space-y-1">
-                    <p>
-                      <span className="font-semibold text-academic-primary">Seller:</span> {item.seller_name || item.seller_roll_no}{' '}
-                      <span className="font-mono text-[10px]">({item.seller_roll_no})</span>
-                    </p>
-                    {item.status === 'IN_PROGRESS' && (
-                      <p className="text-amber-800 font-medium">
-                        <span className="font-semibold">Deal In Progress:</span> Buyer {item.buyer_name || item.buyer_roll_no}{' '}
-                        <span className="font-mono text-[10px]">({item.buyer_roll_no})</span>
-                      </p>
-                    )}
-                    {item.status === 'SOLD' && item.buyer_name && (
-                      <p className="text-slate-700">
-                        <span className="font-semibold">Purchased by:</span> {item.buyer_name}{' '}
-                        <span className="font-mono text-[10px]">({item.buyer_roll_no})</span>
-                      </p>
+                          <button
+                            onClick={() => openBuyModal(item)}
+                            className="py-2.5 rounded-lg bg-academic-burgundy text-white font-semibold text-xs shadow-xs hover:bg-academic-burgundy/90 transition-all flex items-center justify-center space-x-1"
+                          >
+                            <ShoppingBag className="w-3.5 h-3.5" />
+                            <span>Request to Buy</span>
+                          </button>
+                        </div>
+                      )
+                    ) : item.status === 'IN_PROGRESS' ? (
+                      isSeller ? (
+                        <div className="space-y-2">
+                          <div className="p-2 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-900 leading-snug">
+                            <strong>{item.buyer_name || item.buyer_roll_no}</strong> claimed this item. Coordinate in person and confirm once payment & handover are complete.
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              onClick={() => openCancelModal(item)}
+                              className="py-2 rounded-lg border border-rose-300 text-rose-700 bg-rose-50/50 hover:bg-rose-100 font-semibold text-xs transition-all"
+                            >
+                              Cancel Deal
+                            </button>
+                            <button
+                              onClick={() => openSellerConfirmModal(item)}
+                              className="py-2 rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 font-semibold text-xs shadow-xs transition-all flex items-center justify-center space-x-1"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Confirm Payment</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : isBuyer ? (
+                        <div className="space-y-2">
+                          <div className="p-2 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-900 leading-snug">
+                            You claimed this item! Please meet the seller on campus to pay and collect. The seller will mark it as Sold.
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {item.seller_email && (
+                              <a
+                                href={`mailto:${item.seller_email}?subject=Coordination for ${encodeURIComponent(item.title)} on SkillSwap JKLU`}
+                                className="py-2 rounded-lg border border-academic-border bg-academic-secondary hover:bg-academic-border/60 text-academic-primary font-semibold text-xs transition-all flex items-center justify-center space-x-1"
+                              >
+                                <Mail className="w-3.5 h-3.5 text-academic-muted" />
+                                <span>Email Seller</span>
+                              </a>
+                            )}
+                            <button
+                              onClick={() => openCancelModal(item)}
+                              className="py-2 rounded-lg border border-rose-300 text-rose-700 bg-rose-50/50 hover:bg-rose-100 font-semibold text-xs transition-all"
+                            >
+                              Cancel Request
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="block text-center text-xs font-semibold text-amber-800 py-2 bg-amber-50 rounded-lg border border-amber-200">
+                          ⏳ Deal In Progress (Reserved)
+                        </span>
+                      )
+                    ) : item.status === 'SOLD' ? (
+                      <span className="block text-center text-xs font-semibold text-slate-600 py-2 bg-slate-100 rounded-lg border border-slate-200">
+                        {isBuyer ? '✓ You Purchased This Item' : isSeller ? '✓ Sold to Student' : 'Sold to Student'}
+                      </span>
+                    ) : (
+                      <span className="block text-center text-xs text-gray-500 py-2 bg-gray-100 rounded-lg">
+                        Removed by Seller
+                      </span>
                     )}
                   </div>
                 </div>
-
-                {/* Actions */}
-                <div className="pt-2 border-t border-academic-border/60">
-                  {item.status === 'AVAILABLE' ? (
-                    isSeller ? (
-                      <span className="block text-center text-xs font-semibold text-academic-muted py-2 bg-academic-secondary/60 rounded-lg">
-                        Your Active Listing
-                      </span>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-2">
-                        <a
-                          href={`mailto:${item.seller_roll_no.toLowerCase()}@jklu.edu.in?subject=Inquiry regarding ${encodeURIComponent(item.title)} on SkillSwap JKLU`}
-                          className="py-2.5 rounded-lg border border-academic-border bg-academic-secondary hover:bg-academic-border/60 text-academic-primary font-semibold text-xs transition-all flex items-center justify-center space-x-1"
-                          title="Contact seller via official JKLU email before purchasing"
-                        >
-                          <Mail className="w-3.5 h-3.5 text-academic-muted" />
-                          <span>Ask Seller</span>
-                        </a>
-
-                        <button
-                          onClick={() => openBuyModal(item)}
-                          className="py-2.5 rounded-lg bg-academic-burgundy text-white font-semibold text-xs shadow-xs hover:bg-academic-burgundy/90 transition-all flex items-center justify-center space-x-1"
-                        >
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                          <span>Request to Buy</span>
-                        </button>
-                      </div>
-                    )
-                  ) : item.status === 'IN_PROGRESS' ? (
-                    isSeller ? (
-                      <div className="space-y-2">
-                        <div className="p-2 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-900 leading-snug">
-                          <strong>{item.buyer_name || item.buyer_roll_no}</strong> claimed this item. Coordinate in person and confirm once payment & handover are complete.
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            onClick={() => openCancelModal(item)}
-                            className="py-2 rounded-lg border border-rose-300 text-rose-700 bg-rose-50/50 hover:bg-rose-100 font-semibold text-xs transition-all"
-                          >
-                            Cancel Deal
-                          </button>
-                          <button
-                            onClick={() => openSellerConfirmModal(item)}
-                            className="py-2 rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 font-semibold text-xs shadow-xs transition-all flex items-center justify-center space-x-1"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Confirm Payment</span>
-                          </button>
-                        </div>
-                      </div>
-                    ) : isBuyer ? (
-                      <div className="space-y-2">
-                        <div className="p-2 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-900 leading-snug">
-                          You claimed this item! Please meet the seller on campus to pay and collect. The seller will mark it as Sold.
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <a
-                            href={`mailto:${item.seller_roll_no.toLowerCase()}@jklu.edu.in?subject=Coordination for ${encodeURIComponent(item.title)} on SkillSwap JKLU`}
-                            className="py-2 rounded-lg border border-academic-border bg-academic-secondary hover:bg-academic-border/60 text-academic-primary font-semibold text-xs transition-all flex items-center justify-center space-x-1"
-                          >
-                            <Mail className="w-3.5 h-3.5 text-academic-muted" />
-                            <span>Email Seller</span>
-                          </a>
-                          <button
-                            onClick={() => openCancelModal(item)}
-                            className="py-2 rounded-lg border border-rose-300 text-rose-700 bg-rose-50/50 hover:bg-rose-100 font-semibold text-xs transition-all"
-                          >
-                            Cancel Request
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="block text-center text-xs font-semibold text-amber-800 py-2 bg-amber-50 rounded-lg border border-amber-200">
-                        ⏳ Deal In Progress (Reserved)
-                      </span>
-                    )
-                  ) : item.status === 'SOLD' ? (
-                    <span className="block text-center text-xs font-semibold text-slate-600 py-2 bg-slate-100 rounded-lg border border-slate-200">
-                      {isBuyer ? '✓ You Purchased This Item' : isSeller ? '✓ Sold to Student' : 'Sold to Student'}
-                    </span>
-                  ) : (
-                    <span className="block text-center text-xs text-gray-500 py-2 bg-gray-100 rounded-lg">
-                      Removed by Seller
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )
       )}
 
       {/* Pagination */}
@@ -580,8 +829,85 @@ export const Marketplace = () => {
         </form>
       </Modal>
 
+      {/* Send Inquiry Modal */}
+      <Modal
+        isOpen={inquiryModalOpen}
+        onClose={() => setInquiryModalOpen(false)}
+        title={`Send Inquiry: ${inquiryTarget?.title}`}
+      >
+        <form onSubmit={handleInquirySubmit} className="space-y-4 text-xs">
+          {inquiryError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg">
+              {inquiryError}
+            </div>
+          )}
+
+          {inquirySuccess && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>{inquirySuccess}</span>
+            </div>
+          )}
+
+          {/* Product Details Header */}
+          <div className="bg-academic-secondary/60 rounded-xl p-3.5 border border-academic-border space-y-1">
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="font-serif font-bold text-base text-academic-primary">{inquiryTarget?.title}</h4>
+                <p className="text-[11px] text-academic-muted">Category: {inquiryTarget?.category} • {inquiryTarget?.item_condition}</p>
+              </div>
+              <span className="font-serif font-bold text-base text-academic-burgundy">
+                ₹ {inquiryTarget ? parseFloat(inquiryTarget.price).toFixed(2) : '0.00'}
+              </span>
+            </div>
+          </div>
+
+          {/* Seller Contact Info */}
+          <div className="bg-academic-card border border-academic-border rounded-xl p-3 space-y-1 text-academic-muted">
+            <p className="font-semibold text-academic-primary">Seller:</p>
+            <p>Name: <span className="font-medium text-academic-primary">{inquiryTarget?.seller_name}</span> ({inquiryTarget?.seller_roll_no})</p>
+            <p>Official Email: <span className="font-mono text-academic-primary">{inquiryTarget?.seller_email || 'Verified JKLU Student'}</span></p>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-academic-primary mb-1 uppercase tracking-wider">
+              Your Message to Seller *
+            </label>
+            <textarea
+              rows={4}
+              required
+              placeholder="Ask about item condition, edition, meeting location on campus..."
+              value={inquiryMessage}
+              onChange={(e) => setInquiryMessage(e.target.value)}
+              className="w-full p-2.5 rounded-lg border border-academic-border bg-academic-bg text-academic-primary focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
+            />
+            <p className="text-[10px] text-academic-muted mt-1">
+              Submitting an inquiry notifies the seller via in-app notification and email. It does not mark the item as sold.
+            </p>
+          </div>
+
+          <div className="pt-2 flex justify-end space-x-2">
+            <button
+              type="button"
+              onClick={() => setInquiryModalOpen(false)}
+              className="px-4 py-2 rounded-lg border border-academic-border bg-academic-card text-academic-muted hover:bg-academic-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={inquiryLoading || !!inquirySuccess}
+              className="px-4 py-2 rounded-lg bg-academic-burgundy text-white font-semibold shadow-xs hover:bg-academic-burgundy/90 disabled:opacity-50 flex items-center space-x-1.5"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>{inquiryLoading ? 'Sending...' : 'Send Inquiry'}</span>
+            </button>
+          </div>
+        </form>
+      </Modal>
+
       {/* Buy Request Modal */}
-      <Modal isOpen={buyModalOpen} onClose={() => setBuyModalOpen(false)} title={`Purchase Inquiry: ${targetListing?.title}`}>
+      <Modal isOpen={buyModalOpen} onClose={() => setBuyModalOpen(false)} title={`Purchase Reservation: ${targetListing?.title}`}>
         <div className="space-y-4 text-xs">
           {buyError && (
             <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg">
@@ -621,7 +947,7 @@ export const Marketplace = () => {
             </p>
           </div>
 
-          {/* Seller Information & Inquiry Box */}
+          {/* Seller Information Box */}
           <div className="bg-academic-card border border-academic-border rounded-xl p-3.5 space-y-2 text-xs">
             <p className="font-semibold text-academic-primary flex items-center space-x-1.5">
               <User className="w-3.5 h-3.5 text-academic-burgundy" />
@@ -630,18 +956,16 @@ export const Marketplace = () => {
             <div className="text-academic-muted space-y-1">
               <p>Name: <span className="font-medium text-academic-primary">{targetListing?.seller_name || 'JKLU Student'}</span></p>
               <p>Roll No: <span className="font-mono text-academic-primary">{targetListing?.seller_roll_no}</span></p>
-              <p>Official Email: <a href={`mailto:${targetListing?.seller_roll_no?.toLowerCase()}@jklu.edu.in`} className="text-academic-burgundy hover:underline font-mono">{targetListing?.seller_roll_no?.toLowerCase()}@jklu.edu.in</a></p>
-            </div>
-            <div className="pt-2">
-              <a
-                href={`mailto:${targetListing?.seller_roll_no?.toLowerCase()}@jklu.edu.in?subject=Inquiry regarding ${encodeURIComponent(targetListing?.title || '')} on SkillSwap JKLU&body=Hi ${encodeURIComponent(targetListing?.seller_name || '')},%0D%0A%0D%0AI saw your listing for "${encodeURIComponent(targetListing?.title || '')}" on SkillSwap JKLU for ₹${targetListing?.price}. Is this item still available and can we meet on campus?%0D%0A%0D%0AThanks,%0D%0A${encodeURIComponent(user?.name || '')} (${user?.roll_no})`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center space-x-1.5 text-xs font-semibold text-academic-burgundy hover:underline"
-              >
-                <Mail className="w-3.5 h-3.5" />
-                <span>Ask / Inquire with Seller via Email First &rarr;</span>
-              </a>
+              <p>
+                Official Email:{' '}
+                {targetListing?.seller_email ? (
+                  <a href={`mailto:${targetListing.seller_email}`} className="text-academic-burgundy hover:underline font-mono">
+                    {targetListing.seller_email}
+                  </a>
+                ) : (
+                  <span className="text-academic-muted font-mono">Verified JKLU Email</span>
+                )}
+              </p>
             </div>
           </div>
 
@@ -652,7 +976,7 @@ export const Marketplace = () => {
               <span>How Peer Marketplace Works:</span>
             </p>
             <ol className="list-decimal list-inside text-[11px] text-amber-800 space-y-1">
-              <li><strong>Reserve item:</strong> Clicking confirm puts this item <em>In Progress</em>, holding it for you.</li>
+              <li><strong>Reserve item:</strong> Clicking submit puts this item <em>In Progress</em>, reserving it for you.</li>
               <li><strong>Meet on campus:</strong> Coordinate directly with the seller to inspect and pay (Cash/UPI).</li>
               <li><strong>Seller confirms:</strong> Once paid and handed over, the seller confirms receipt to mark it as <em>Sold</em>.</li>
             </ol>
@@ -668,7 +992,7 @@ export const Marketplace = () => {
                 className="mt-0.5 w-4 h-4 text-academic-burgundy rounded border-academic-border focus:ring-academic-burgundy"
               />
               <span className="text-xs text-academic-primary font-medium">
-                Yes, I understand and want to initiate this purchase request with {targetListing?.seller_roll_no}.
+                Yes, I understand and want to initiate this reservation request with {targetListing?.seller_name || targetListing?.seller_roll_no}.
               </span>
             </label>
           </div>

@@ -129,6 +129,8 @@ from app.routers.skills import router as skills_router
 from app.routers.learning import router as learning_router
 from app.routers.marketplace import router as marketplace_router
 from app.routers.analytics import router as analytics_router
+from app.routers.inquiries import router as inquiries_router
+from app.routers.notifications import router as notifications_router
 
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
@@ -136,6 +138,8 @@ app.include_router(students_router, prefix="/api/v1")
 app.include_router(skills_router, prefix="/api/v1")
 app.include_router(learning_router, prefix="/api/v1")
 app.include_router(marketplace_router, prefix="/api/v1")
+app.include_router(inquiries_router, prefix="/api/v1")
+app.include_router(notifications_router, prefix="/api/v1")
 app.include_router(analytics_router, prefix="/api/v1")
 
 # Health Check Endpoint

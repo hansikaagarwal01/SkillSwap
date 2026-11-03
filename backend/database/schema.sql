@@ -199,3 +199,44 @@ CREATE TABLE survey_import_audit (
     KEY idx_audit_roll (normalized_roll_no),
     KEY idx_audit_status (import_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
+-- Table: marketplace_inquiry
+-- Relational inquiry tracking connecting verified student buyers with sellers.
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS marketplace_inquiry (
+    inquiry_id INT AUTO_INCREMENT PRIMARY KEY,
+    listing_id INT NOT NULL,
+    buyer_roll_no VARCHAR(12) NOT NULL,
+    seller_roll_no VARCHAR(12) NOT NULL,
+    message TEXT NOT NULL,
+    inquiry_status ENUM('PENDING', 'RESPONDED', 'CLOSED') NOT NULL DEFAULT 'PENDING',
+    email_delivery_status ENUM('SENT', 'FAILED', 'SKIPPED') NOT NULL DEFAULT 'SKIPPED',
+    email_delivery_error VARCHAR(255) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_inquiry_listing FOREIGN KEY (listing_id) REFERENCES listing(listing_id) ON DELETE CASCADE,
+    CONSTRAINT fk_inquiry_buyer FOREIGN KEY (buyer_roll_no) REFERENCES student(roll_no) ON DELETE RESTRICT,
+    CONSTRAINT fk_inquiry_seller FOREIGN KEY (seller_roll_no) REFERENCES student(roll_no) ON DELETE RESTRICT,
+    CONSTRAINT chk_inquiry_buyer_seller_distinct CHECK (buyer_roll_no <> seller_roll_no),
+    INDEX idx_inquiry_listing (listing_id),
+    INDEX idx_inquiry_seller_status (seller_roll_no, inquiry_status),
+    INDEX idx_inquiry_buyer (buyer_roll_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
+-- Table: notification
+-- In-app notifications with read status and unread counter queries.
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS notification (
+    notification_id INT AUTO_INCREMENT PRIMARY KEY,
+    recipient_roll_no VARCHAR(12) NOT NULL,
+    inquiry_id INT NULL,
+    title VARCHAR(150) NOT NULL,
+    message TEXT NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_notification_recipient FOREIGN KEY (recipient_roll_no) REFERENCES student(roll_no) ON DELETE CASCADE,
+    CONSTRAINT fk_notification_inquiry FOREIGN KEY (inquiry_id) REFERENCES marketplace_inquiry(inquiry_id) ON DELETE SET NULL,
+    INDEX idx_notification_recipient_read (recipient_roll_no, is_read)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

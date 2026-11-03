@@ -6,6 +6,8 @@ from app.models.review import Review
 from app.models.experience import Experience
 from app.models.listing import Listing
 from app.models.audit import SurveyImportAudit
+from app.models.inquiry import MarketplaceInquiry
+from app.models.notification import Notification
 
 __all__ = [
     "Base",
@@ -18,4 +20,6 @@ __all__ = [
     "Experience",
     "Listing",
     "SurveyImportAudit",
+    "MarketplaceInquiry",
+    "Notification",
 ]

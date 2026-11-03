@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import api from '../api/client';
 import {
   BookOpen,
   Users,
@@ -12,13 +13,23 @@ import {
   LogOut,
   User,
   Star,
+  Bell,
+  CheckCheck,
+  Check,
+  Clock,
   ChevronDown,
-  Sparkles,
 } from 'lucide-react';
 
 export const Navbar = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [loadingNotifs, setLoadingNotifs] = useState(false);
+  const popoverRef = useRef(null);
 
   const navLinks = [
     { to: '/mentors', label: 'Students & Mentors', icon: Users },
@@ -35,13 +46,89 @@ export const Navbar = () => {
 
   const isActive = (path) => location.pathname === path;
 
+  // Poll / fetch unread notification count
+  const fetchUnreadCount = async () => {
+    if (!user) return;
+    try {
+      const resp = await api.get('/notifications/unread-count');
+      setUnreadCount(resp.data.unread_count || 0);
+    } catch (err) {
+      // Quiet fail if network/auth not ready
+    }
+  };
+
+  const fetchNotifications = async () => {
+    if (!user) return;
+    setLoadingNotifs(true);
+    try {
+      const resp = await api.get('/notifications?page_size=8');
+      setNotifications(resp.data.items || []);
+    } catch (err) {
+      console.error('Failed to load notifications', err);
+    } finally {
+      setLoadingNotifs(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const timer = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(timer);
+  }, [user, location.pathname]);
+
+  // Close notifications popover on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target)) {
+        setNotificationsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleToggleNotifications = () => {
+    if (!notificationsOpen) {
+      fetchNotifications();
+    }
+    setNotificationsOpen(!notificationsOpen);
+  };
+
+  const handleMarkAsRead = async (notif) => {
+    try {
+      if (!notif.is_read) {
+        await api.patch(`/notifications/${notif.notification_id}/read`);
+        setNotifications((prev) =>
+          prev.map((n) => (n.notification_id === notif.notification_id ? { ...n, is_read: true } : n))
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+      setNotificationsOpen(false);
+      if (notif.inquiry_id) {
+        navigate('/marketplace?tab=INQUIRIES');
+      }
+    } catch (err) {
+      console.error('Failed to mark notification as read', err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await api.patch('/notifications/read-all');
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error('Failed to mark all as read', err);
+    }
+  };
+
   return (
-    <header className="sticky top-0 z-40 bg-academic-card/95 backdrop-blur-md border-b border-academic-border shadow-sm">
+    <header className="sticky top-0 z-40 bg-academic-card/95 backdrop-blur-md border-b border-academic-border shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo */}
           <Link to="/" className="flex items-center space-x-3 group">
-            <div className="w-10 h-10 rounded-lg bg-academic-burgundy text-white flex items-center justify-center font-serif font-bold text-xl shadow-md group-hover:bg-academic-accent transition-colors">
+            <div className="w-10 h-10 rounded-lg bg-academic-burgundy text-white flex items-center justify-center font-serif font-bold text-xl shadow-xs group-hover:bg-academic-accent transition-colors">
               SK
             </div>
             <div>
@@ -74,14 +161,113 @@ export const Navbar = () => {
             })}
           </nav>
 
-          {/* User Controls & Demo Switcher */}
+          {/* User Controls */}
           <div className="flex items-center space-x-3">
             {user ? (
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2 sm:space-x-3">
                 {/* Reputation Badge */}
                 <div className="hidden lg:flex items-center space-x-1 bg-amber-50 border border-amber-200 text-amber-900 px-2.5 py-1 rounded-full text-xs font-semibold shadow-xs">
                   <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
                   <span>{user.reputation_points} pts</span>
+                </div>
+
+                {/* Notifications Bell */}
+                <div className="relative" ref={popoverRef}>
+                  <button
+                    onClick={handleToggleNotifications}
+                    className={`relative p-2 rounded-lg border transition-all ${
+                      notificationsOpen
+                        ? 'bg-academic-secondary border-academic-burgundy text-academic-burgundy'
+                        : 'border-academic-border text-academic-muted hover:text-academic-primary hover:bg-academic-secondary/60'
+                    }`}
+                    title="In-app Notifications"
+                  >
+                    <Bell className="w-4 h-4" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-academic-burgundy text-white text-[10px] font-bold rounded-full h-4 min-w-[16px] px-1 flex items-center justify-center shadow-xs">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Notifications Popover Dropdown */}
+                  {notificationsOpen && (
+                    <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-academic-card border border-academic-border rounded-xl shadow-lg z-50 overflow-hidden text-xs">
+                      <div className="p-3 border-b border-academic-border/70 flex items-center justify-between bg-academic-secondary/40">
+                        <div className="flex items-center space-x-1.5 font-serif font-bold text-academic-primary text-sm">
+                          <Bell className="w-4 h-4 text-academic-burgundy" />
+                          <span>Notifications</span>
+                          {unreadCount > 0 && (
+                            <span className="bg-academic-burgundy/10 text-academic-burgundy text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
+                              {unreadCount} new
+                            </span>
+                          )}
+                        </div>
+
+                        {unreadCount > 0 && (
+                          <button
+                            onClick={handleMarkAllAsRead}
+                            className="text-[11px] text-academic-burgundy hover:underline flex items-center space-x-1"
+                          >
+                            <CheckCheck className="w-3 h-3" />
+                            <span>Mark all read</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="max-h-80 overflow-y-auto divide-y divide-academic-border/40">
+                        {loadingNotifs ? (
+                          <div className="py-8 text-center text-academic-muted">Loading notifications...</div>
+                        ) : notifications.length === 0 ? (
+                          <div className="py-8 text-center text-academic-muted space-y-1">
+                            <Bell className="w-6 h-6 text-academic-muted/50 mx-auto" />
+                            <p className="font-semibold text-academic-primary">No notifications</p>
+                            <p className="text-[11px]">Product inquiries and session updates will appear here.</p>
+                          </div>
+                        ) : (
+                          notifications.map((notif) => (
+                            <div
+                              key={notif.notification_id}
+                              onClick={() => handleMarkAsRead(notif)}
+                              className={`p-3 cursor-pointer transition-colors hover:bg-academic-secondary/60 flex items-start space-x-2.5 ${
+                                !notif.is_read ? 'bg-amber-50/40' : ''
+                              }`}
+                            >
+                              <div
+                                className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                                  !notif.is_read ? 'bg-academic-burgundy' : 'bg-transparent'
+                                }`}
+                              />
+                              <div className="flex-1 space-y-0.5">
+                                <div className="flex items-baseline justify-between">
+                                  <p className="font-semibold text-academic-primary">{notif.title}</p>
+                                  <span className="text-[10px] text-academic-muted font-mono">
+                                    {new Date(notif.created_at).toLocaleDateString([], {
+                                      month: 'short',
+                                      day: 'numeric',
+                                    })}
+                                  </span>
+                                </div>
+                                <p className="text-academic-muted text-[11px] leading-relaxed line-clamp-2">
+                                  {notif.message}
+                                </p>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      <div className="p-2 border-t border-academic-border/70 bg-academic-secondary/30 text-center">
+                        <Link
+                          to="/marketplace?tab=INQUIRIES"
+                          onClick={() => setNotificationsOpen(false)}
+                          className="text-[11px] font-semibold text-academic-burgundy hover:underline"
+                        >
+                          View Marketplace Inquiries &rarr;
+                        </Link>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Profile Pill */}
@@ -119,7 +305,7 @@ export const Navbar = () => {
                   to="/register"
                   className="px-3.5 py-1.5 text-xs font-semibold bg-academic-burgundy text-white rounded-lg hover:bg-academic-burgundy/90 transition-colors shadow-xs"
                 >
-                  Register
+                  Join Community
                 </Link>
               </div>
             )}

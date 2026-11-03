@@ -34,8 +34,10 @@ class ListingResponse(BaseModel):
     listing_id: int
     seller_roll_no: str
     seller_name: Optional[str] = None
+    seller_email: Optional[str] = None
     buyer_roll_no: Optional[str] = None
     buyer_name: Optional[str] = None
+    buyer_email: Optional[str] = None
     title: str
     description: str
     status: Literal["AVAILABLE", "IN_PROGRESS", "SOLD", "REMOVED", "PENDING_REVIEW"]

@@ -50,6 +50,10 @@ def setup_test_database():
     db = TestingSessionLocal()
     try:
         # Clear previous test data in child-first order
+        if "notification" in Base.metadata.tables:
+            db.execute(Base.metadata.tables["notification"].delete())
+        if "marketplace_inquiry" in Base.metadata.tables:
+            db.execute(Base.metadata.tables["marketplace_inquiry"].delete())
         db.execute(Base.metadata.tables["review"].delete())
         db.execute(Base.metadata.tables["learning_session"].delete())
         db.execute(Base.metadata.tables["listing"].delete())

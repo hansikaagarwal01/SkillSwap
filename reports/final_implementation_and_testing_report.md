@@ -16,10 +16,12 @@ All artificial demo profiles, fabricated skills, fake session reviews, and simul
 
 ### Key Achievements:
 - **100% Authentic JKLU Data:** 36 survey rows processed into 34 verified student profiles, 102 normalized skills, 89 possessed skill mappings, 83 desired learning goals, and 9 authentic student marketplace listings.
-- **Relational DBMS Rigor:** 8 normalized tables adhering to Boyce-Codd Normal Form (BCNF) / 3NF, plus an immutable survey audit table. `Roll_No` serves as the universal immutable Primary Key across all relations.
-- **Flawless SQL Execution:** All **34 required demonstration SQL queries** (43 SQL statements) were executed on the live MySQL 8.0 database with a **100% pass rate (0 errors)**.
-- **100% Automated Pytest Pass Rate:** All **24 backend integration tests** pass cleanly against an isolated test database (`skillswap_test`), proving atomic concurrency, session state machines, and RBAC security.
-- **UI & Corporate Palette Alignment:** Completely stripped fake demo logins, decorative emojis, and simulated rankings. Aligned with the formal academic beige palette (`#F7F3EC`, `#EFE9DF`, `#FCFAF6`, `#2B2926`, `#6F6A63`, `#D8D1C5`, `#8A6A4A`).
+- **Relational DBMS Rigor:** 10 normalized tables adhering to Boyce-Codd Normal Form (BCNF) / 3NF, plus an immutable survey audit table. `Roll_No` serves as the universal immutable Primary Key across all relations.
+- **Marketplace Inquiries & In-App Notification Bell:** Relational inquiry dispatch (`marketplace_inquiry`) paired with seller notification popovers (`notification`) and automated SMTP email dispatch.
+- **Email Generation Bug Fixed:** Completely eliminated all fabricated `roll_no.toLowerCase() + '@jklu.edu.in'` email links. The application now strictly retrieves authentic student emails from `STUDENT.Email`.
+- **Flawless SQL Execution:** All **37 demonstration SQL queries** (45 statements) executed on live MySQL 8.0 with a **100% pass rate (0 errors)**.
+- **100% Automated Pytest Pass Rate:** All **26 backend integration tests** pass cleanly against an isolated test database (`skillswap_test`), proving atomic concurrency, session state machines, inquiries, notifications, and RBAC security.
+- **UI & Corporate Palette Alignment:** Formal academic beige palette (`#F7F3EC`, `#EFE9DF`, `#FCFAF6`, `#2B2926`, `#6F6A63`, `#D8D1C5`, `#8A6A4A`). Fully verified Vite production build.
 
 ---
 
@@ -267,19 +269,19 @@ The frontend was completely refactored to align with university standards:
    SELECT audit_id, raw_name, raw_roll_number, normalized_roll_no, import_status FROM survey_import_audit;
    ```
 
-### Step 2: Execute the 34 Demonstration SQL Queries
+### Step 2: Execute the 37 Demonstration SQL Queries
 Open `backend/database/test_queries.sql` in MySQL Workbench and execute the script (or run via terminal):
 ```powershell
 $env:PYTHONPATH='backend'
 backend\.venv\Scripts\python backend/verify_test_queries.py
 ```
-*Expected: 43 statements executed, 0 errors.*
+*Expected: 45 statements executed, 0 errors.*
 
 ### Step 3: Run the Automated Pytest Suite
 ```powershell
 backend\.venv\Scripts\pytest -v
 ```
-*Expected: 24 passed in ~2.7s.*
+*Expected: 26 passed in ~3.4s.*
 
 ### Step 4: Run the Application Locally
 1. **Start Backend Server:**

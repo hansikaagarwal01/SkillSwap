@@ -20,6 +20,13 @@ erDiagram
     STUDENT ||--o{ LISTING : "sells"
     STUDENT ||--o{ LISTING : "buys"
 
+    STUDENT ||--o{ MARKETPLACE_INQUIRY : "inquires (buyer)"
+    STUDENT ||--o{ MARKETPLACE_INQUIRY : "receives (seller)"
+    LISTING ||--o{ MARKETPLACE_INQUIRY : "referenced_in"
+
+    STUDENT ||--o{ NOTIFICATION : "receives_notification"
+    MARKETPLACE_INQUIRY ||--o{ NOTIFICATION : "triggers"
+
     STUDENT {
         string roll_no PK "regex ^(20[0-9]{2})(BTECH|BBA|BDES)[0-9]{3}$"
         string name
@@ -129,6 +136,28 @@ erDiagram
         text raw_item_description
         enum import_status "IMPORTED, MERGED, REVIEW_REQUIRED"
         text error_notes
+        datetime created_at
+    }
+
+    MARKETPLACE_INQUIRY {
+        int inquiry_id PK
+        int listing_id FK
+        string buyer_roll_no FK
+        string seller_roll_no FK
+        text message
+        enum inquiry_status "PENDING, RESPONDED, CLOSED"
+        enum email_delivery_status "SENT, FAILED, SKIPPED"
+        string email_delivery_error
+        datetime created_at
+    }
+
+    NOTIFICATION {
+        int notification_id PK
+        string recipient_roll_no FK
+        int inquiry_id FK
+        string title
+        text message
+        boolean is_read
         datetime created_at
     }
 ```
