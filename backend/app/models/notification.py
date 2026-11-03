@@ -33,3 +33,4 @@ class Notification(Base):
     # Relationships
     recipient: Mapped["Student"] = relationship("Student", foreign_keys=[recipient_roll_no])
     inquiry: Mapped[Optional["MarketplaceInquiry"]] = relationship("MarketplaceInquiry", foreign_keys=[inquiry_id])
+

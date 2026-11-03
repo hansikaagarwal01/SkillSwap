@@ -27,3 +27,4 @@ class InquiryResponse(BaseModel):
     email_delivery_status: Literal["SENT", "FAILED", "SKIPPED"]
     email_delivery_error: Optional[str] = None
     created_at: datetime
+

@@ -51,3 +51,4 @@ class MarketplaceInquiry(Base):
     listing: Mapped["Listing"] = relationship("Listing")
     buyer: Mapped["Student"] = relationship("Student", foreign_keys=[buyer_roll_no])
     seller: Mapped["Student"] = relationship("Student", foreign_keys=[seller_roll_no])
+

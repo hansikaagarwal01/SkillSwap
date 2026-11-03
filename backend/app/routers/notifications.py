@@ -63,3 +63,4 @@ def mark_all_as_read(
         user_roll=current_user.roll_no,
     )
     return {"message": f"{updated} notifications marked as read."}
+

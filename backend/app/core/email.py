@@ -77,3 +77,4 @@ SkillSwap JKLU
         err_msg = f"SMTP dispatch failed: {str(exc)}"
         logger.warning(err_msg)
         return False, "FAILED", err_msg[:255]
+

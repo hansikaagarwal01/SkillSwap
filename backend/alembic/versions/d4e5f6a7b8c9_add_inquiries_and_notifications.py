@@ -58,3 +58,4 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_table('notification')
     op.drop_table('marketplace_inquiry')
+

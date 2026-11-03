@@ -258,3 +258,4 @@ def mark_all_notifications_as_read(db: Session, user_roll: str) -> int:
     )
     db.commit()
     return updated
+

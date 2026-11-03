@@ -88,3 +88,4 @@ def update_inquiry_status(
         user_roll=current_user.roll_no,
         is_admin=is_admin,
     )
+

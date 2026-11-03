@@ -152,3 +152,4 @@ def test_inquiry_business_rules_and_security():
     # 6. Aarav marks all notifications as read
     resp_readall = client.patch("/api/v1/notifications/read-all", headers=headers_aarav)
     assert resp_readall.status_code == 200
+
