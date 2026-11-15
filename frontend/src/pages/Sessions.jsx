@@ -36,6 +36,12 @@ export const Sessions = () => {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewError, setReviewError] = useState('');
 
+  // View Session Reviews Modal state
+  const [viewReviewsOpen, setViewReviewsOpen] = useState(false);
+  const [sessionReviews, setSessionReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState('');
+
   // Reschedule Modal state
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
   const [rescheduleTime, setRescheduleTime] = useState('');
@@ -139,7 +145,8 @@ export const Sessions = () => {
     setReviewLoading(true);
     setReviewError('');
     try {
-      await api.post(`/sessions/${activeSession.session_id}/review`, {
+      await api.post('/reviews', {
+        session_id: activeSession.session_id,
         rating: parseInt(rating, 10),
         comment: comment.trim() || null,
       });
@@ -149,6 +156,21 @@ export const Sessions = () => {
       setReviewError(err.response?.data?.error?.message || 'Failed to submit review.');
     } finally {
       setReviewLoading(false);
+    }
+  };
+
+  const openViewReviewsModal = async (sess) => {
+    setActiveSession(sess);
+    setViewReviewsOpen(true);
+    setReviewsLoading(true);
+    setReviewsError('');
+    try {
+      const resp = await api.get(`/sessions/${sess.session_id}/reviews`);
+      setSessionReviews(resp.data || []);
+    } catch (err) {
+      setReviewsError(err.response?.data?.error?.message || 'Failed to load reviews.');
+    } finally {
+      setReviewsLoading(false);
     }
   };
 
@@ -357,21 +379,38 @@ export const Sessions = () => {
                     </>
                   )}
 
-                  {/* Review Button on COMPLETED */}
+                  {/* Review Buttons on COMPLETED */}
                   {sess.status === 'COMPLETED' && (
-                    <button
-                      onClick={() => {
-                        setActiveSession(sess);
-                        setRating(5);
-                        setComment('');
-                        setReviewError('');
-                        setReviewModalOpen(true);
-                      }}
-                      className="px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 font-semibold hover:bg-amber-100 transition-colors flex items-center space-x-1"
-                    >
-                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
-                      <span>Leave Peer Review</span>
-                    </button>
+                    <>
+                      {!sess.has_review ? (
+                        <button
+                          onClick={() => {
+                            setActiveSession(sess);
+                            setRating(5);
+                            setComment('');
+                            setReviewError('');
+                            setReviewModalOpen(true);
+                          }}
+                          className="px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 font-semibold hover:bg-amber-100 transition-colors flex items-center space-x-1"
+                        >
+                          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                          <span>Leave Peer Review</span>
+                        </button>
+                      ) : (
+                        <span className="px-3 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 font-semibold flex items-center space-x-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Reviewed</span>
+                        </span>
+                      )}
+
+                      <button
+                        onClick={() => openViewReviewsModal(sess)}
+                        className="px-3 py-1.5 rounded-lg border border-academic-border bg-academic-secondary hover:bg-academic-border/60 text-academic-primary font-semibold transition-colors flex items-center space-x-1"
+                      >
+                        <Star className="w-3.5 h-3.5 text-academic-muted" />
+                        <span>View Reviews</span>
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -583,6 +622,67 @@ export const Sessions = () => {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* View Session Reviews Modal */}
+      <Modal
+        isOpen={viewReviewsOpen}
+        onClose={() => setViewReviewsOpen(false)}
+        title={`Peer Reviews for Session #${activeSession?.session_id}`}
+      >
+        <div className="space-y-4 text-xs">
+          {reviewsError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg">
+              {reviewsError}
+            </div>
+          )}
+
+          {reviewsLoading ? (
+            <p className="text-center text-academic-muted py-6">Loading session reviews...</p>
+          ) : sessionReviews.length === 0 ? (
+            <p className="text-center text-academic-muted py-6">
+              No reviews have been submitted for this session yet.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {sessionReviews.map((rev) => (
+                <div
+                  key={`${rev.session_id}-${rev.roll_no}`}
+                  className="p-3.5 rounded-xl border border-academic-border bg-academic-secondary/40 space-y-1.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-academic-primary">
+                      {rev.reviewer_name || rev.roll_no}{' '}
+                      <span className="text-academic-muted font-normal">
+                        reviewed {rev.reviewee_name || rev.reviewee_roll_no}
+                      </span>
+                    </span>
+                    <span className="inline-flex items-center space-x-1 font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+                      <Star className="w-3 h-3 fill-amber-400 text-amber-500" />
+                      <span>{rev.rating}/5</span>
+                    </span>
+                  </div>
+                  {rev.comment && (
+                    <p className="text-academic-muted leading-relaxed">{rev.comment}</p>
+                  )}
+                  <p className="text-[10px] text-academic-muted font-mono">
+                    {new Date(rev.created_at).toLocaleString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="pt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setViewReviewsOpen(false)}
+              className="px-4 py-2 rounded-lg border border-academic-border bg-academic-card text-academic-primary hover:bg-academic-secondary font-semibold"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

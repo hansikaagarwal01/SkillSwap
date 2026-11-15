@@ -5,6 +5,8 @@
 -- ============================================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE notification;
+TRUNCATE TABLE marketplace_inquiry;
 TRUNCATE TABLE survey_import_audit;
 TRUNCATE TABLE student_desired_skill;
 TRUNCATE TABLE review;
@@ -15,6 +17,16 @@ TRUNCATE TABLE student_skill;
 TRUNCATE TABLE skill;
 TRUNCATE TABLE student;
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- ----------------------------------------------------------------------------
+-- 0. DEPARTMENTS (Canonical University Departments)
+-- ----------------------------------------------------------------------------
+INSERT IGNORE INTO department (d_id, name, program) VALUES
+(1, 'Computer Science and Engineering', 'BTECH'),
+(2, 'Artificial Intelligence and Data Science', 'BTECH'),
+(3, 'Electronics and Communication Engineering', 'BTECH'),
+(4, 'Institute of Management', 'BBA'),
+(5, 'Institute of Design', 'BDES');
 
 -- ----------------------------------------------------------------------------
 -- 1. STUDENTS (34 Authentic Survey Students)
@@ -54,6 +66,14 @@ INSERT INTO student (roll_no, name, email, phone, program, admission_year, reput
 ('2026BTECH286', 'jahanvi singh', 'jahanvisingh@jklu.edu.in', NULL, 'BTECH', 2026, 0, NULL, 'UNVERIFIED', FALSE),
 ('2026BTECH294', 'Mahi Pal', 'mahipal@jklu.edu.in', NULL, 'BTECH', 2026, 0, NULL, 'UNVERIFIED', FALSE),
 ('2026BTECH300', 'Nayanshi Jain', 'nayanshijain@jklu.edu.in', NULL, 'BTECH', 2026, 0, NULL, 'UNVERIFIED', FALSE);
+
+UPDATE student
+SET d_id = CASE program
+    WHEN 'BTECH' THEN 1
+    WHEN 'BBA' THEN 4
+    WHEN 'BDES' THEN 5
+END
+WHERE d_id IS NULL;
 
 -- ----------------------------------------------------------------------------
 -- 2. SKILLS (102 Canonical Normalized Skills from Real Survey)

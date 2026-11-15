@@ -24,13 +24,18 @@ export const Register = () => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const departments = [
-    { d_id: 1, name: 'Computer Science and Engineering', program: 'BTECH' },
-    { d_id: 2, name: 'Artificial Intelligence and Data Science', program: 'BTECH' },
-    { d_id: 3, name: 'Electronics and Communication Engineering', program: 'BTECH' },
-    { d_id: 4, name: 'Institute of Management', program: 'BBA' },
-    { d_id: 5, name: 'Institute of Design', program: 'BDES' },
-  ];
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    api
+      .get('/departments')
+      .then((res) => {
+        if (res.data && res.data.length > 0) {
+          setDepartments(res.data);
+        }
+      })
+      .catch((err) => console.error('Failed to fetch departments', err));
+  }, []);
 
   // Auto-detect Admission Year and Program directly from Roll Number string!
   useEffect(() => {
@@ -45,18 +50,20 @@ export const Register = () => {
     }
 
     if (clean.includes('BTECH') && formData.program !== 'BTECH') {
-      setFormData((prev) => ({ ...prev, program: 'BTECH', d_id: 1 }));
+      const firstBtech = departments.find((d) => d.program === 'BTECH');
+      setFormData((prev) => ({ ...prev, program: 'BTECH', d_id: firstBtech ? firstBtech.d_id : 1 }));
     } else if (clean.includes('BBA') && formData.program !== 'BBA') {
-      setFormData((prev) => ({ ...prev, program: 'BBA', d_id: 4 }));
+      const firstBba = departments.find((d) => d.program === 'BBA');
+      setFormData((prev) => ({ ...prev, program: 'BBA', d_id: firstBba ? firstBba.d_id : 4 }));
     } else if (clean.includes('BDES') && formData.program !== 'BDES') {
-      setFormData((prev) => ({ ...prev, program: 'BDES', d_id: 5 }));
+      const firstBdes = departments.find((d) => d.program === 'BDES');
+      setFormData((prev) => ({ ...prev, program: 'BDES', d_id: firstBdes ? firstBdes.d_id : 5 }));
     }
-  }, [formData.roll_no]);
+  }, [formData.roll_no, departments]);
 
   const handleProgramChange = (prog) => {
-    let defaultDid = 1;
-    if (prog === 'BBA') defaultDid = 4;
-    else if (prog === 'BDES') defaultDid = 5;
+    const matched = departments.find((d) => d.program === prog);
+    const defaultDid = matched ? matched.d_id : prog === 'BBA' ? 4 : prog === 'BDES' ? 5 : 1;
 
     setFormData({
       ...formData,
@@ -98,26 +105,12 @@ export const Register = () => {
       };
 
       // 1. Register student account
-      await api.post('/auth/register', payload);
+      const resp = await api.post('/auth/register', payload);
 
-      // 2. Instantly activate account for seamless login
-      try {
-        await api.post(`/auth/verify-account/${roll}`);
-      } catch (actErr) {
-        console.warn('Auto-activate step:', actErr);
-      }
-
-      setSuccess(`Account registered and verified for ${roll}! Signing you in...`);
-
-      // 3. Auto-login immediately
-      setTimeout(async () => {
-        try {
-          await login(roll, formData.password);
-          navigate('/mentors');
-        } catch (loginErr) {
-          navigate('/login');
-        }
-      }, 1200);
+      setSuccess(
+        resp.data?.message ||
+        `Registration submitted for ${roll}! A single-use verification link has been sent to ${payload.email}. Please verify your email to activate your account.`
+      );
     } catch (err) {
       const msg = err.response?.data?.error?.message || 'Registration failed. Check roll number and email format.';
       setError(msg);
@@ -147,9 +140,33 @@ export const Register = () => {
         )}
 
         {success && (
-          <div className="flex items-start space-x-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs">
-            <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-emerald-600" />
-            <span>{success}</span>
+          <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs space-y-3">
+            <div className="flex items-start space-x-2">
+              <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-semibold text-sm">Account Registration Successful!</p>
+                <p className="text-emerald-800">{success}</p>
+                <p className="text-[11px] text-emerald-700">
+                  Check your university inbox for the verification token, or proceed to the verification screen.
+                </p>
+              </div>
+            </div>
+            <div className="flex space-x-2 pt-1">
+              <button
+                type="button"
+                onClick={() => navigate('/verify-email')}
+                className="py-2 px-4 rounded-lg bg-emerald-700 text-white font-semibold hover:bg-emerald-800 transition-colors shadow-xs"
+              >
+                Go to Email Verification
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="py-2 px-4 rounded-lg border border-emerald-300 bg-white text-emerald-800 font-medium hover:bg-emerald-50 transition-colors"
+              >
+                Sign In
+              </button>
+            </div>
           </div>
         )}
 

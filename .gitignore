@@ -46,3 +46,7 @@ yarn-error.log*
 *~
 .DS_Store
 Thumbs.db
+
+# Local database backups & scratch scripts
+backend/database/backups/
+scratch/

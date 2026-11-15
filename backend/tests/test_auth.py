@@ -248,3 +248,105 @@ def test_admin_approval_endpoint():
     )
     assert resp_approve.status_code == 200
     assert "approved and activated" in resp_approve.json()["message"]
+
+
+def test_departments_and_department_persistence():
+    # 1. GET /api/v1/departments returns MySQL-backed departments
+    resp_depts = client.get("/api/v1/departments")
+    assert resp_depts.status_code == 200
+    depts = resp_depts.json()
+    assert len(depts) >= 5
+    dept_by_id = {d["d_id"]: d for d in depts}
+    assert 2 in dept_by_id and dept_by_id[2]["program"] == "BTECH"
+    assert 3 in dept_by_id and dept_by_id[3]["program"] == "BTECH"
+    assert 4 in dept_by_id and dept_by_id[4]["program"] == "BBA"
+
+    test_roll = "2026BTECH092"
+    test_email = "dept.persist@jklu.edu.in"
+    db: Session = SessionLocal()
+    db.query(Student).filter(Student.roll_no == test_roll).delete()
+    db.commit()
+    db.close()
+
+    try:
+        # 2. Program/department mismatch rejected on register -> 400
+        resp_mismatch = client.post("/api/v1/auth/register", json={
+            "roll_no": "2026BTECH093",
+            "name": "Wrong Dept Program",
+            "email": "wrong.dept@jklu.edu.in",
+            "password": "StrongPassword@2026",
+            "d_id": 4,
+        })
+        assert resp_mismatch.status_code == 400
+
+        # 3. Register with d_id=2 (AI & DS) -> 201
+        resp_reg = client.post("/api/v1/auth/register", json={
+            "roll_no": test_roll,
+            "name": "Department Persist Student",
+            "email": test_email,
+            "password": "StrongPassword@2026",
+            "d_id": 2,
+        })
+        assert resp_reg.status_code == 201
+
+        # Verify email using verification token flow
+        db = SessionLocal()
+        student = db.query(Student).filter(Student.roll_no == test_roll).first()
+        assert student is not None
+        assert student.d_id == 2
+        raw_token = "dept_verify_token_secret_123456"
+        student.verification_token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+        student.verification_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+        db.commit()
+        db.close()
+
+        resp_verify = client.post("/api/v1/auth/verify-email", json={"token": raw_token})
+        assert resp_verify.status_code == 200
+
+        # 4. Login and confirm d_id=2 on /auth/me and /students/{roll}
+        resp_login = client.post("/api/v1/auth/login", json={
+            "roll_no": test_roll,
+            "password": "StrongPassword@2026",
+        })
+        assert resp_login.status_code == 200
+        token = resp_login.json()["access_token"]
+
+        resp_me = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+        assert resp_me.status_code == 200
+        assert resp_me.json()["d_id"] == 2
+        assert resp_me.json()["department"] == dept_by_id[2]["name"]
+
+        resp_profile = client.get(f"/api/v1/students/{test_roll}")
+        assert resp_profile.status_code == 200
+        assert resp_profile.json()["d_id"] == 2
+        assert resp_profile.json()["department"] == dept_by_id[2]["name"]
+
+        # 5. Update department to d_id=3 (ECE) via PATCH /students/{roll} -> 200 & persists
+        resp_patch = client.patch(
+            f"/api/v1/students/{test_roll}",
+            json={"d_id": 3},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp_patch.status_code == 200
+        assert resp_patch.json()["d_id"] == 3
+        assert resp_patch.json()["department"] == dept_by_id[3]["name"]
+
+        resp_profile_after = client.get(f"/api/v1/students/{test_roll}")
+        assert resp_profile_after.status_code == 200
+        assert resp_profile_after.json()["d_id"] == 3
+        assert resp_profile_after.json()["department"] == dept_by_id[3]["name"]
+
+        # 6. Mismatched program on PATCH rejected -> 400
+        resp_bad_patch = client.patch(
+            f"/api/v1/students/{test_roll}",
+            json={"d_id": 4},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp_bad_patch.status_code == 400
+    finally:
+        db = SessionLocal()
+        db.query(Student).filter(Student.roll_no.in_(["2026BTECH092", "2026BTECH093"])).delete(
+            synchronize_session=False
+        )
+        db.commit()
+        db.close()

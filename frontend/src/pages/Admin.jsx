@@ -107,9 +107,11 @@ export const Admin = () => {
               </span>
               <p className="font-serif font-bold text-base text-academic-primary flex items-center space-x-1.5">
                 <Database className="w-4 h-4 text-emerald-600" />
-                <span className="capitalize">{health?.database}</span>
+                <span className="capitalize">{health?.database || 'Unavailable'}</span>
               </p>
-              <p className="text-[10px] text-academic-muted font-mono">MySQL 8.0.46 InnoDB</p>
+              <p className="text-[10px] text-academic-muted font-mono">
+                {health?.db_version ? `MySQL ${health.db_version} InnoDB` : 'Version unknown'}
+              </p>
             </div>
 
             <div className="p-4 rounded-xl bg-academic-secondary/60 border border-academic-border space-y-1">
@@ -118,9 +120,11 @@ export const Admin = () => {
               </span>
               <p className="font-serif font-bold text-base text-academic-primary flex items-center space-x-1.5">
                 <Cpu className="w-4 h-4 text-indigo-600" />
-                <span className="capitalize">{health?.app_env}</span>
+                <span className="capitalize">{health?.app_env || 'Unavailable'}</span>
               </p>
-              <p className="text-[10px] text-academic-muted font-mono">FastAPI 0.115.14</p>
+              <p className="text-[10px] text-academic-muted font-mono">
+                {health?.fastapi_version ? `FastAPI ${health.fastapi_version}` : 'FastAPI Server'}
+              </p>
             </div>
 
             <div className="p-4 rounded-xl bg-academic-secondary/60 border border-academic-border space-y-1">
@@ -129,9 +133,9 @@ export const Admin = () => {
               </span>
               <p className="font-serif font-bold text-base text-emerald-700 flex items-center space-x-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span className="uppercase">{health?.status}</span>
+                <span className="uppercase">{health?.status || 'Unknown'}</span>
               </p>
-              <p className="text-[10px] text-academic-muted font-mono">{health?.project}</p>
+              <p className="text-[10px] text-academic-muted font-mono">{health?.project || 'SkillSwap JKLU'}</p>
             </div>
           </div>
         )}

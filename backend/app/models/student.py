@@ -1,12 +1,13 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
-from sqlalchemy import String, Integer, SmallInteger, DateTime, Enum, Boolean, CheckConstraint, Index, func
+from sqlalchemy import String, Integer, SmallInteger, DateTime, Enum, Boolean, CheckConstraint, ForeignKey, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.skill import StudentSkill, StudentDesiredSkill
     from app.models.experience import Experience
+    from app.models.department import Department
 
 class Student(Base):
     __tablename__ = "student"
@@ -35,11 +36,22 @@ class Student(Base):
         Enum("BTECH", "BBA", "BDES", name="student_program_enum"),
         nullable=False
     )
+    d_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("department.d_id", ondelete="SET NULL", onupdate="CASCADE"),
+        nullable=True
+    )
     admission_year: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     reputation_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     # Consolidated Auth & Verification fields
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    role: Mapped[str] = mapped_column(
+        Enum("STUDENT", "ADMIN", name="student_role_enum"),
+        default="STUDENT",
+        server_default="STUDENT",
+        nullable=False
+    )
     account_status: Mapped[str] = mapped_column(
         Enum("UNVERIFIED", "PENDING_APPROVAL", "ACTIVE", "SUSPENDED", name="account_status_enum"),
         default="UNVERIFIED",
@@ -55,6 +67,7 @@ class Student(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relationships
+    dept_rel: Mapped[Optional["Department"]] = relationship("Department")
     skills: Mapped[list["StudentSkill"]] = relationship("StudentSkill", back_populates="student", cascade="all, delete-orphan")
     desired_skills: Mapped[list["StudentDesiredSkill"]] = relationship("StudentDesiredSkill", back_populates="student", cascade="all, delete-orphan")
     experiences: Mapped[list["Experience"]] = relationship("Experience", back_populates="student", cascade="all, delete-orphan")
@@ -66,19 +79,9 @@ class Student(Base):
         return self
 
     @property
-    def role(self) -> str:
-        if getattr(self, "_role", None):
-            return self._role
-        if self.roll_no == "2024BTECH001":
-            return "ADMIN"
-        return "STUDENT"
-
-    @role.setter
-    def role(self, val: str) -> None:
-        self._role = val
-
-    @property
     def department(self) -> str:
+        if self.dept_rel:
+            return self.dept_rel.name
         prog_map = {
             "BTECH": "Computer Science and Engineering",
             "BBA": "Institute of Management",
@@ -87,7 +90,9 @@ class Student(Base):
         return prog_map.get(self.program, "Computer Science and Engineering")
 
     @property
-    def d_id(self) -> int:
+    def resolved_d_id(self) -> int:
+        if self.d_id is not None:
+            return self.d_id
         dept_ids = {
             "BTECH": 1,
             "BBA": 4,

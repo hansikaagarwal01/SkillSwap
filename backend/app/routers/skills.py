@@ -52,12 +52,15 @@ def create_skill(
     db.refresh(new_skill)
     return new_skill
 
-from app.models.department import PREDEFINED_DEPARTMENTS
+from app.models.department import Department, PREDEFINED_DEPARTMENTS
 
 @router.get(
     "/departments",
     summary="Get list of university academic departments"
 )
-def get_departments():
+def get_departments(db: Session = Depends(get_db)):
+    depts = db.query(Department).order_by(Department.d_id.asc()).all()
+    if depts:
+        return [{"d_id": d.d_id, "name": d.name, "program": d.program} for d in depts]
     return [{"d_id": d.d_id, "name": d.name, "program": d.program} for d in PREDEFINED_DEPARTMENTS]
 

@@ -14,6 +14,8 @@
 -- ============================================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS notification;
+DROP TABLE IF EXISTS marketplace_inquiry;
 DROP TABLE IF EXISTS survey_import_audit;
 DROP TABLE IF EXISTS student_desired_skill;
 DROP TABLE IF EXISTS review;
@@ -23,7 +25,15 @@ DROP TABLE IF EXISTS experience;
 DROP TABLE IF EXISTS student_skill;
 DROP TABLE IF EXISTS skill;
 DROP TABLE IF EXISTS student;
+DROP TABLE IF EXISTS department;
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- 0. DEPARTMENT (Canonical academic departments)
+CREATE TABLE department (
+    d_id INT NOT NULL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    program ENUM('BTECH', 'BBA', 'BDES') NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 1. STUDENT (Student profile, academic program, authentication, and verification)
 CREATE TABLE student (
@@ -32,8 +42,10 @@ CREATE TABLE student (
     email VARCHAR(100) NOT NULL,
     phone VARCHAR(20) NULL,
     program ENUM('BTECH', 'BBA', 'BDES') NOT NULL,
+    d_id INT NULL,
     admission_year SMALLINT NOT NULL,
     reputation_points INT NOT NULL DEFAULT 0,
+    role ENUM('STUDENT', 'ADMIN') NOT NULL DEFAULT 'STUDENT',
     password_hash VARCHAR(255) NULL,
     account_status ENUM('UNVERIFIED', 'PENDING_APPROVAL', 'ACTIVE', 'SUSPENDED') NOT NULL DEFAULT 'UNVERIFIED',
     email_verified BOOLEAN NOT NULL DEFAULT FALSE,
@@ -48,6 +60,7 @@ CREATE TABLE student (
     UNIQUE KEY uq_student_verification_token (verification_token_hash),
     KEY idx_student_reputation (reputation_points),
     KEY idx_student_program_year (program, admission_year),
+    CONSTRAINT fk_student_department FOREIGN KEY (d_id) REFERENCES department (d_id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT chk_student_roll_no_format CHECK (roll_no REGEXP '^(20[0-9]{2})(BTECH|BBA|BDES)[0-9]{3}$'),
     CONSTRAINT chk_student_program_matches_roll CHECK (program = SUBSTRING(roll_no, 5, LENGTH(program))),
     CONSTRAINT chk_student_reputation_positive CHECK (reputation_points >= 0)

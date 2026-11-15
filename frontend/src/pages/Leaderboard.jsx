@@ -61,7 +61,7 @@ export const Leaderboard = () => {
             </p>
           </div>
           <div className="pt-2 border-t border-academic-border/60 text-xs text-academic-muted flex flex-wrap justify-center gap-x-6 gap-y-2">
-            <span>• 34 Verified JKLU Students Enrolled</span>
+            <span>• Verified JKLU Student Directory</span>
             <span>• Zero Fabricated Reputation Points</span>
             <span>• Safe Concurrency Session Audits</span>
           </div>

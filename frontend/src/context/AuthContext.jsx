@@ -34,6 +34,11 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (roll_no, password) => {
+    // Clear previous user session immediately before authenticating new user
+    setUser(null);
+    localStorage.removeItem('skillswap_token');
+    localStorage.removeItem('skillswap_user');
+
     const resp = await api.post('/auth/login', { roll_no, password });
     const { access_token } = resp.data;
     localStorage.setItem('skillswap_token', access_token);

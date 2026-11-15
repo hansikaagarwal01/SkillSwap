@@ -59,25 +59,6 @@ def login(request: Request, body: LoginRequest, db: Session = Depends(get_db)):
 def get_me(current_user: Student = Depends(get_current_user)):
     return AuthService.get_me(current_user)
 
-@router.post(
-    "/verify-account/{roll_no}",
-    status_code=status.HTTP_200_OK,
-    summary="Instantly verify and activate student account"
-)
-def verify_account(roll_no: str, db: Session = Depends(get_db)):
-    student = db.query(Student).filter(Student.roll_no == roll_no.strip().upper()).first()
-    if not student:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "ACCOUNT_NOT_FOUND", "message": "Account not found."}
-        )
-    student.email_verified = True
-    student.account_status = "ACTIVE"
-    student.verification_token_hash = None
-    student.verification_token_expires_at = None
-    db.commit()
-    return {"message": f"Account {roll_no} successfully verified and activated."}
-
 
 admin_router = APIRouter(prefix="/admin", tags=["Admin"])
 

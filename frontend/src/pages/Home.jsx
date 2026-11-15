@@ -28,11 +28,11 @@ export const Home = () => {
       .get('/analytics/overview')
       .then((res) => {
         setStats({
-          total_students: res.data.total_students,
-          total_skills: res.data.total_skills,
-          total_desired_skills: res.data.total_desired_skills || 83,
-          total_sessions: res.data.total_sessions,
-          total_listings: res.data.total_listings,
+          total_students: res.data.total_students ?? 0,
+          total_skills: res.data.total_skills ?? 0,
+          total_desired_skills: res.data.total_desired_skills ?? 0,
+          total_sessions: res.data.total_sessions ?? 0,
+          total_listings: res.data.total_listings ?? 0,
         });
       })
       .catch((err) => console.error('Failed to fetch analytics overview', err));
@@ -85,7 +85,7 @@ export const Home = () => {
         {[
           { label: 'JKLU Students', value: stats.total_students, icon: Users, sub: 'BTECH / BBA / BDES Programs' },
           { label: 'Catalog Skills', value: stats.total_skills, icon: BookOpen, sub: 'Distinct Academic & Extracurricular' },
-          { label: 'Desired Skills', value: stats.total_desired_skills || 83, icon: Sparkles, sub: 'Peer Learning Goals' },
+          { label: 'Desired Skills', value: stats.total_desired_skills ?? 0, icon: Sparkles, sub: 'Peer Learning Goals' },
           { label: 'Marketplace Items', value: stats.total_listings, icon: ShoppingBag, sub: 'Authentic Campus Offerings' },
         ].map((item, idx) => {
           const Icon = item.icon;

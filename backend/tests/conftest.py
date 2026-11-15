@@ -10,11 +10,12 @@ from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 from app.core.config import settings
 from app.db.base import Base
-from app.core.dependencies import get_db
+from app.core.dependencies import get_db, limiter
 import app.db.session as db_session
 from app.main import app
 from app.core.security import get_password_hash
 from app.models.student import Student
+from app.models.department import Department, PREDEFINED_DEPARTMENTS
 from app.models.skill import Skill, StudentSkill
 from app.models.listing import Listing
 from app.models.session import LearningSession
@@ -40,6 +41,7 @@ def override_get_db():
         db.close()
 
 app.dependency_overrides[get_db] = override_get_db
+limiter.enabled = False
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_database():
@@ -64,6 +66,11 @@ def setup_test_database():
             db.execute(Base.metadata.tables["survey_import_audit"].delete())
         db.execute(Base.metadata.tables["skill"].delete())
         db.execute(Base.metadata.tables["student"].delete())
+        db.commit()
+
+        # Seed canonical departments
+        for dept_spec in PREDEFINED_DEPARTMENTS:
+            db.merge(Department(d_id=dept_spec.d_id, name=dept_spec.name, program=dept_spec.program))
         db.commit()
 
         default_pw = get_password_hash("Student@JKLU2026")

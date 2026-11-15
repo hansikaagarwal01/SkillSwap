@@ -29,6 +29,11 @@ def test_listings_listing_filtering_and_pagination():
     assert len(data["items"]) == 5
 
     # 2. Filter by category
+    resp_cats = client.get("/api/v1/listings/categories")
+    assert resp_cats.status_code == 200
+    cats = resp_cats.json()
+    assert "Textbooks" in cats
+
     resp_books = client.get("/api/v1/listings?category=Textbooks")
     assert resp_books.status_code == 200
     items = resp_books.json()["items"]
@@ -264,3 +269,108 @@ def test_leaderboard_and_analytics_overview():
     assert mp["available_listings"] >= 1
     assert mp["sold_listings"] >= 1
     assert mp["total_volume"] > 0
+
+
+def test_listing_edit_delete_authz_and_in_progress_guard():
+    from app.core.security import create_access_token
+
+    headers_aarav = {
+        "Authorization": f"Bearer {create_access_token(subject='2024BTECH001', role='ADMIN', token_version=1)}"
+    }
+    headers_bhavya = {
+        "Authorization": f"Bearer {create_access_token(subject='2024BTECH002', role='STUDENT', token_version=1)}"
+    }
+
+    cats_resp = client.get("/api/v1/listings/categories")
+    assert cats_resp.status_code == 200
+    category = cats_resp.json()[0] if cats_resp.json() else "General"
+
+    resp_create = client.post(
+        "/api/v1/listings",
+        json={
+            "title": "Phase 2 Test Calculator",
+            "description": "Scientific calculator in good condition for DBMS verification.",
+            "price": 600,
+            "category": category,
+            "item_condition": "GOOD",
+        },
+        headers=headers_aarav,
+    )
+    assert resp_create.status_code == 201
+    listing_id = resp_create.json()["listing_id"]
+
+    try:
+        # 1. Non-owner cannot edit or delete -> 403
+        resp_forbid_patch = client.patch(
+            f"/api/v1/listings/{listing_id}",
+            json={"title": "Tampered Title", "price": 10},
+            headers=headers_bhavya,
+        )
+        assert resp_forbid_patch.status_code == 403
+
+        resp_forbid_del = client.delete(
+            f"/api/v1/listings/{listing_id}",
+            headers=headers_bhavya,
+        )
+        assert resp_forbid_del.status_code == 403
+
+        # 2. Owner edits AVAILABLE listing -> 200 & persisted
+        resp_patch = client.patch(
+            f"/api/v1/listings/{listing_id}",
+            json={"title": "Updated Scientific Calculator", "price": 450},
+            headers=headers_aarav,
+        )
+        assert resp_patch.status_code == 200
+        assert resp_patch.json()["title"] == "Updated Scientific Calculator"
+        assert float(resp_patch.json()["price"]) == 450.0
+
+        resp_get = client.get(f"/api/v1/listings/{listing_id}")
+        assert resp_get.status_code == 200
+        assert resp_get.json()["title"] == "Updated Scientific Calculator"
+
+        # 3. Buyer initiates purchase -> status becomes IN_PROGRESS
+        resp_buy = client.post(
+            f"/api/v1/listings/{listing_id}/purchase",
+            headers=headers_bhavya,
+        )
+        assert resp_buy.status_code == 200
+        assert resp_buy.json()["status"] == "IN_PROGRESS"
+
+        # 4. Seller cannot edit or delete while IN_PROGRESS -> 400
+        resp_blocked_patch = client.patch(
+            f"/api/v1/listings/{listing_id}",
+            json={"price": 999},
+            headers=headers_aarav,
+        )
+        assert resp_blocked_patch.status_code == 400
+
+        resp_blocked_del = client.delete(
+            f"/api/v1/listings/{listing_id}",
+            headers=headers_aarav,
+        )
+        assert resp_blocked_del.status_code == 400
+
+        # 5. Seller cancels in-progress sale -> returns to AVAILABLE
+        resp_cancel = client.post(
+            f"/api/v1/listings/{listing_id}/cancel-sale",
+            headers=headers_aarav,
+        )
+        assert resp_cancel.status_code == 200
+        assert resp_cancel.json()["status"] == "AVAILABLE"
+
+        # 6. Seller deletes AVAILABLE listing -> 204 & gone
+        resp_del = client.delete(
+            f"/api/v1/listings/{listing_id}",
+            headers=headers_aarav,
+        )
+        assert resp_del.status_code == 204
+
+        resp_gone = client.get(f"/api/v1/listings/{listing_id}")
+        assert resp_gone.status_code == 404
+    finally:
+        db = SessionLocal()
+        listing = db.query(Listing).filter(Listing.listing_id == listing_id).first()
+        if listing is not None:
+            db.delete(listing)
+            db.commit()
+        db.close()

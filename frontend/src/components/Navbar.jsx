@@ -46,35 +46,53 @@ export const Navbar = () => {
 
   const isActive = (path) => location.pathname === path;
 
-  // Poll / fetch unread notification count
-  const fetchUnreadCount = async () => {
-    if (!user) return;
-    try {
-      const resp = await api.get('/notifications/unread-count');
-      setUnreadCount(resp.data.unread_count || 0);
-    } catch (err) {
-      // Quiet fail if network/auth not ready
+  // Poll / fetch unread notification count with user scoping and cancellation
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setNotificationsOpen(false);
+      return;
     }
-  };
+
+    let active = true;
+    const currentRoll = user.roll_no;
+
+    const fetchCount = async () => {
+      try {
+        const resp = await api.get('/notifications/unread-count');
+        if (active && user?.roll_no === currentRoll) {
+          setUnreadCount(resp.data.unread_count || 0);
+        }
+      } catch (err) {
+        // Quiet fail if network/auth not ready
+      }
+    };
+
+    fetchCount();
+    const timer = setInterval(fetchCount, 30000);
+
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [user?.roll_no, location.pathname]);
 
   const fetchNotifications = async () => {
     if (!user) return;
+    const currentRoll = user.roll_no;
     setLoadingNotifs(true);
     try {
       const resp = await api.get('/notifications?page_size=8');
-      setNotifications(resp.data.items || []);
+      if (user?.roll_no === currentRoll) {
+        setNotifications(resp.data.items || []);
+      }
     } catch (err) {
       console.error('Failed to load notifications', err);
     } finally {
       setLoadingNotifs(false);
     }
   };
-
-  useEffect(() => {
-    fetchUnreadCount();
-    const timer = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(timer);
-  }, [user, location.pathname]);
 
   // Close notifications popover on click outside
   useEffect(() => {
@@ -120,6 +138,13 @@ export const Navbar = () => {
     } catch (err) {
       console.error('Failed to mark all as read', err);
     }
+  };
+
+  const handleLogout = () => {
+    setNotifications([]);
+    setUnreadCount(0);
+    setNotificationsOpen(false);
+    logout();
   };
 
   return (
@@ -286,7 +311,7 @@ export const Navbar = () => {
 
                 {/* Logout Button */}
                 <button
-                  onClick={logout}
+                  onClick={handleLogout}
                   title="Logout"
                   className="p-2 text-academic-muted hover:text-academic-burgundy hover:bg-academic-secondary rounded-lg transition-colors"
                 >

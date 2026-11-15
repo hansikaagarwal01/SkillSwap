@@ -288,3 +288,247 @@ def test_experience_portfolio_crud():
         headers={"Authorization": f"Bearer {aarav_token}"}
     )
     assert resp_del.status_code == 200
+
+
+def test_mentorship_requires_can_teach():
+    from datetime import datetime, timedelta, timezone
+    from app.core.security import create_access_token
+
+    aarav_token = create_access_token(subject="2024BTECH001", role="ADMIN", token_version=1)
+    bhavya_token = create_access_token(subject="2024BTECH002", role="STUDENT", token_version=1)
+
+    # Give Bhavya skill_id=10 with can_teach=False (learning-only skill)
+    resp_skill = client.post(
+        "/api/v1/students/2024BTECH002/skills",
+        json={"skill_id": 10, "proficiency_level": "INTERMEDIATE", "can_teach": False},
+        headers={"Authorization": f"Bearer {bhavya_token}"},
+    )
+    assert resp_skill.status_code == 201
+
+    try:
+        future_iso = (datetime.now(timezone.utc) + timedelta(days=3)).isoformat()
+        resp_req = client.post(
+            "/api/v1/sessions",
+            json={
+                "mentor_roll_no": "2024BTECH002",
+                "skill_id": 10,
+                "topic": "Requesting skill where mentor has can_teach=False",
+                "mode": "ONLINE",
+                "scheduled_at": future_iso,
+            },
+            headers={"Authorization": f"Bearer {aarav_token}"},
+        )
+        assert resp_req.status_code == 400
+        assert resp_req.json()["error"]["code"] == "SKILL_NOT_TAUGHT"
+    finally:
+        client.delete(
+            "/api/v1/students/2024BTECH002/skills/10",
+            headers={"Authorization": f"Bearer {bhavya_token}"},
+        )
+
+
+def test_dual_participant_peer_reviews_and_has_review_scope():
+    from datetime import datetime, timedelta, timezone
+    from app.db.session import SessionLocal
+    from app.models.skill import StudentSkill
+    from app.models.session import LearningSession
+    from app.models.review import Review
+    from app.core.security import create_access_token
+
+    aarav_token = create_access_token(subject="2024BTECH001", role="ADMIN", token_version=1)
+    bhavya_token = create_access_token(subject="2024BTECH002", role="STUDENT", token_version=1)
+
+    db = SessionLocal()
+    teach_row = db.query(StudentSkill).filter(
+        StudentSkill.roll_no == "2024BTECH001",
+        StudentSkill.can_teach.is_(True),
+    ).first()
+    assert teach_row is not None
+    skill_id = teach_row.skill_id
+    db.close()
+
+    session_id = None
+    try:
+        # 1. Bhavya requests session with Aarav -> 201
+        resp_create = client.post(
+            "/api/v1/sessions",
+            json={
+                "mentor_roll_no": "2024BTECH001",
+                "skill_id": skill_id,
+                "topic": "Dual participant review scoping verification",
+                "mode": "ONLINE",
+                "scheduled_at": (datetime.now(timezone.utc) + timedelta(days=4)).isoformat(),
+            },
+            headers={"Authorization": f"Bearer {bhavya_token}"},
+        )
+        assert resp_create.status_code == 201
+        session_id = resp_create.json()["session_id"]
+
+        # 2. Aarav accepts the session, then scheduled time elapses before completion
+        resp_accept = client.patch(
+            f"/api/v1/sessions/{session_id}/status",
+            json={"status": "ACCEPTED"},
+            headers={"Authorization": f"Bearer {aarav_token}"},
+        )
+        assert resp_accept.status_code == 200
+
+        db = SessionLocal()
+        sess_row = db.query(LearningSession).filter(LearningSession.session_id == session_id).first()
+        sess_row.scheduled_at = datetime.now(timezone.utc) - timedelta(hours=2)
+        db.commit()
+        db.close()
+
+        resp_complete = client.patch(
+            f"/api/v1/sessions/{session_id}/status",
+            json={"status": "COMPLETED"},
+            headers={"Authorization": f"Bearer {aarav_token}"},
+        )
+        assert resp_complete.status_code == 200, resp_complete.text
+
+        # 3. Bhavya leaves peer review -> 201
+        resp_r1 = client.post(
+            "/api/v1/reviews",
+            json={
+                "session_id": session_id,
+                "rating": 5,
+                "comment": "Clear explanation and structured examples.",
+            },
+            headers={"Authorization": f"Bearer {bhavya_token}"},
+        )
+        assert resp_r1.status_code == 201
+        assert resp_r1.json()["roll_no"] == "2024BTECH002"
+
+        # 4. Bhavya duplicate review blocked -> 409
+        resp_dup = client.post(
+            "/api/v1/reviews",
+            json={"session_id": session_id, "rating": 4, "comment": "Duplicate attempt"},
+            headers={"Authorization": f"Bearer {bhavya_token}"},
+        )
+        assert resp_dup.status_code == 409
+
+        # 5. has_review must be True for Bhavya and still False for Aarav
+        bhavya_list = client.get(
+            "/api/v1/sessions?page_size=50",
+            headers={"Authorization": f"Bearer {bhavya_token}"},
+        )
+        assert bhavya_list.status_code == 200
+        bhavya_sess = next(s for s in bhavya_list.json()["items"] if s["session_id"] == session_id)
+        assert bhavya_sess["has_review"] is True
+
+        aarav_list = client.get(
+            "/api/v1/sessions?page_size=50",
+            headers={"Authorization": f"Bearer {aarav_token}"},
+        )
+        assert aarav_list.status_code == 200
+        aarav_sess = next(s for s in aarav_list.json()["items"] if s["session_id"] == session_id)
+        assert aarav_sess["has_review"] is False
+
+        # 6. Aarav submits his peer review -> 201
+        resp_r2 = client.post(
+            "/api/v1/reviews",
+            json={
+                "session_id": session_id,
+                "rating": 5,
+                "comment": "Well-prepared learner with thoughtful questions.",
+            },
+            headers={"Authorization": f"Bearer {aarav_token}"},
+        )
+        assert resp_r2.status_code == 201
+        assert resp_r2.json()["roll_no"] == "2024BTECH001"
+
+        # 7. Aarav's has_review now True and GET /sessions/{id}/reviews returns both
+        aarav_list_after = client.get(
+            "/api/v1/sessions?page_size=50",
+            headers={"Authorization": f"Bearer {aarav_token}"},
+        )
+        aarav_sess_after = next(s for s in aarav_list_after.json()["items"] if s["session_id"] == session_id)
+        assert aarav_sess_after["has_review"] is True
+
+        resp_reviews = client.get(
+            f"/api/v1/sessions/{session_id}/reviews",
+            headers={"Authorization": f"Bearer {bhavya_token}"},
+        )
+        assert resp_reviews.status_code == 200
+        reviews = resp_reviews.json()
+        assert len(reviews) == 2
+        assert {r["roll_no"] for r in reviews} == {"2024BTECH001", "2024BTECH002"}
+    finally:
+        if session_id is not None:
+            db = SessionLocal()
+            db.query(Review).filter(Review.session_id == session_id).delete()
+            db.query(LearningSession).filter(LearningSession.session_id == session_id).delete()
+            db.commit()
+            db.close()
+
+
+def test_experience_update_clear_end_date_authz_and_delete():
+    from app.core.security import create_access_token
+
+    aarav_token = create_access_token(subject="2024BTECH001", role="ADMIN", token_version=1)
+    bhavya_token = create_access_token(subject="2024BTECH002", role="STUDENT", token_version=1)
+
+    resp_create = client.post(
+        "/api/v1/students/2024BTECH001/experiences",
+        json={
+            "role_title": "Peer Mentorship Lead",
+            "organization": "JKLU Academic Council",
+            "exp_type": "PROJECT",
+            "start_date": "2026-01-15",
+            "end_date": "2026-05-15",
+            "description": "Coordinating peer labs.",
+        },
+        headers={"Authorization": f"Bearer {aarav_token}"},
+    )
+    assert resp_create.status_code == 201
+    exp_no = resp_create.json()["exp_no"]
+
+    try:
+        # Cross-user forbidden checks
+        resp_forbid_patch = client.patch(
+            f"/api/v1/experiences/2024BTECH001/{exp_no}",
+            json={"role_title": "Unauthorized Edit"},
+            headers={"Authorization": f"Bearer {bhavya_token}"},
+        )
+        assert resp_forbid_patch.status_code == 403
+
+        resp_forbid_del = client.delete(
+            f"/api/v1/experiences/2024BTECH001/{exp_no}",
+            headers={"Authorization": f"Bearer {bhavya_token}"},
+        )
+        assert resp_forbid_del.status_code == 403
+
+        # Invalid date order on PATCH -> 400 INVALID_DATES
+        resp_bad_date = client.patch(
+            f"/api/v1/experiences/2024BTECH001/{exp_no}",
+            json={"end_date": "2020-01-01"},
+            headers={"Authorization": f"Bearer {aarav_token}"},
+        )
+        assert resp_bad_date.status_code == 400
+        assert resp_bad_date.json()["error"]["code"] == "INVALID_DATES"
+
+        # Clear end_date (mark ongoing) + update description -> 200
+        resp_clear = client.patch(
+            f"/api/v1/experiences/2024BTECH001/{exp_no}",
+            json={"end_date": None, "description": "Updated ongoing leadership role."},
+            headers={"Authorization": f"Bearer {aarav_token}"},
+        )
+        assert resp_clear.status_code == 200
+        cleared = resp_clear.json()
+        assert cleared["end_date"] is None
+        assert cleared["description"] == "Updated ongoing leadership role."
+
+        # Verify persisted via GET
+        resp_list = client.get("/api/v1/students/2024BTECH001/experiences")
+        assert resp_list.status_code == 200
+        match = next(e for e in resp_list.json() if e["exp_no"] == exp_no)
+        assert match["end_date"] is None
+        assert match["description"] == "Updated ongoing leadership role."
+    finally:
+        resp_del = client.delete(
+            f"/api/v1/experiences/2024BTECH001/{exp_no}",
+            headers={"Authorization": f"Bearer {aarav_token}"},
+        )
+        assert resp_del.status_code == 200
+
+    resp_after_del = client.get("/api/v1/students/2024BTECH001/experiences")
+    assert all(e["exp_no"] != exp_no for e in resp_after_del.json())

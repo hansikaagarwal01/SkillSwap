@@ -2,7 +2,7 @@ from decimal import Decimal
 from math import ceil
 from typing import Optional, List, Dict, Any
 from sqlalchemy import text, func, desc
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status
 
 from app.models.listing import Listing
@@ -63,8 +63,21 @@ def create_listing(db: Session, seller_roll_no: str, data: ListingCreate) -> Lis
     return _to_listing_response(new_listing)
 
 
+def get_listing_categories(db: Session) -> List[str]:
+    rows = db.query(Listing.category).distinct().order_by(Listing.category.asc()).all()
+    return [r[0] for r in rows if r[0]]
+
+
 def get_listing_by_id(db: Session, listing_id: int) -> ListingResponse:
-    listing = db.query(Listing).filter(Listing.listing_id == listing_id).first()
+    listing = (
+        db.query(Listing)
+        .options(
+            joinedload(Listing.seller),
+            joinedload(Listing.buyer)
+        )
+        .filter(Listing.listing_id == listing_id)
+        .first()
+    )
     if not listing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
     return _to_listing_response(listing)
@@ -81,7 +94,10 @@ def list_listings(
     page: int = 1,
     page_size: int = 20,
 ) -> PageResponse[ListingResponse]:
-    query = db.query(Listing)
+    query = db.query(Listing).options(
+        joinedload(Listing.seller),
+        joinedload(Listing.buyer)
+    )
 
     if category:
         query = query.filter(Listing.category == category)
@@ -141,7 +157,22 @@ def update_listing(
             detail="Cannot modify a listing that has already been sold",
         )
 
+    if listing.status == "IN_PROGRESS":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot modify a listing while a purchase deal is in progress. Cancel the deal first.",
+        )
+
     update_dict = data.model_dump(exclude_unset=True)
+    if "status" in update_dict and update_dict["status"] in ("SOLD", "IN_PROGRESS"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Status transitions to IN_PROGRESS or SOLD must use the purchase/confirmation endpoints.",
+        )
+
+    if "price" in update_dict and update_dict["price"] is not None and update_dict["price"] != listing.price:
+        listing.original_price_text = None
+
     for field, value in update_dict.items():
         setattr(listing, field, value)
 
@@ -170,6 +201,12 @@ def delete_listing(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete a listing that has already been sold",
+        )
+
+    if listing.status == "IN_PROGRESS":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete a listing while a purchase deal is in progress. Cancel the deal first.",
         )
 
     db.delete(listing)
@@ -314,7 +351,14 @@ def get_my_listings(
     page: int = 1,
     page_size: int = 20,
 ) -> PageResponse[ListingResponse]:
-    query = db.query(Listing).filter(Listing.seller_roll_no == roll_no)
+    query = (
+        db.query(Listing)
+        .options(
+            joinedload(Listing.seller),
+            joinedload(Listing.buyer)
+        )
+        .filter(Listing.seller_roll_no == roll_no)
+    )
     total = query.count()
     listings = (
         query.order_by(desc(Listing.posted_date))
@@ -339,7 +383,14 @@ def get_my_purchases(
     page: int = 1,
     page_size: int = 20,
 ) -> PageResponse[ListingResponse]:
-    query = db.query(Listing).filter(Listing.buyer_roll_no == roll_no)
+    query = (
+        db.query(Listing)
+        .options(
+            joinedload(Listing.seller),
+            joinedload(Listing.buyer)
+        )
+        .filter(Listing.buyer_roll_no == roll_no)
+    )
     total = query.count()
     listings = (
         query.order_by(desc(Listing.sold_at))

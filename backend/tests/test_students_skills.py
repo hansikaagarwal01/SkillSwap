@@ -181,3 +181,46 @@ def test_mentor_discovery():
     for m in resp_rated.json()["items"]:
         assert m["avg_rating"] is not None
         assert m["avg_rating"] >= 4.5
+
+
+def test_student_directory_skill_keyword_search_and_desired_skill_filter():
+    # 1. Text search q=Python should match students possessing/desiring Python skills
+    resp_py = client.get("/api/v1/students?q=Python&page_size=50")
+    assert resp_py.status_code == 200
+    items = resp_py.json()["items"]
+    assert len(items) >= 1
+    for st in items:
+        matched_skill = any("python" in s["skill_name"].lower() for s in (st.get("skills") or []))
+        matched_desired = any("python" in s["skill_name"].lower() for s in (st.get("desired_skills") or []))
+        matched_text = ("python" in st["name"].lower()) or ("python" in st["roll_no"].lower())
+        assert matched_skill or matched_desired or matched_text
+
+    # 2. desired_skill_id filter returns students wanting that skill
+    resp_skills = client.get("/api/v1/skills")
+    assert resp_skills.status_code == 200
+    skills = resp_skills.json()
+    assert len(skills) >= 1
+
+    all_students = client.get("/api/v1/students?page_size=50").json()["items"]
+    sample_desired_id = None
+    for st in all_students:
+        desired = st.get("desired_skills") or []
+        if desired:
+            sample_desired_id = desired[0]["skill_id"]
+            break
+
+    if sample_desired_id is not None:
+        resp_desired = client.get(f"/api/v1/students?desired_skill_id={sample_desired_id}&page_size=50")
+        assert resp_desired.status_code == 200
+        filtered = resp_desired.json()["items"]
+        assert len(filtered) >= 1
+        for st in filtered:
+            assert any(ds["skill_id"] == sample_desired_id for ds in (st.get("desired_skills") or []))
+
+    # 3. Dynamic listing categories endpoint works and returns non-empty strings
+    resp_cats = client.get("/api/v1/listings/categories")
+    assert resp_cats.status_code == 200
+    cats = resp_cats.json()
+    assert isinstance(cats, list)
+    assert len(cats) >= 1
+    assert all(isinstance(c, str) and len(c) > 0 for c in cats)

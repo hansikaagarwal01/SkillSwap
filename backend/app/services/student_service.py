@@ -1,11 +1,11 @@
 from typing import Optional, Literal
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload, joinedload
 from sqlalchemy import func, and_, or_, desc
 from fastapi import HTTPException, status
 from math import ceil
 
 from app.models.student import Student
-from app.models.department import PREDEFINED_DEPARTMENTS
+from app.models.department import Department, PREDEFINED_DEPARTMENTS
 from app.models.skill import Skill, StudentSkill, StudentDesiredSkill
 from app.models.session import LearningSession
 from app.models.review import Review
@@ -46,9 +46,16 @@ class StudentService:
             query = query.filter(Student.program == program.upper())
         if admission_year:
             query = query.filter(Student.admission_year == admission_year)
-        if q:
+        if q and q.strip():
             term = f"%{q.strip()}%"
-            query = query.filter(or_(Student.name.ilike(term), Student.roll_no.ilike(term)))
+            query = query.filter(
+                or_(
+                    Student.name.ilike(term),
+                    Student.roll_no.ilike(term),
+                    Student.skills.any(StudentSkill.skill.has(Skill.name.ilike(term))),
+                    Student.desired_skills.any(StudentDesiredSkill.skill.has(Skill.name.ilike(term)))
+                )
+            )
         if skill_id:
             query = query.join(StudentSkill, Student.roll_no == StudentSkill.roll_no).filter(StudentSkill.skill_id == skill_id)
         if desired_skill_id:
@@ -56,7 +63,17 @@ class StudentService:
 
         total = query.count()
         total_pages = ceil(total / page_size) if total > 0 else 1
-        students = query.order_by(Student.roll_no.asc()).offset((page - 1) * page_size).limit(page_size).all()
+        students = (
+            query.options(
+                joinedload(Student.dept_rel),
+                selectinload(Student.skills).joinedload(StudentSkill.skill),
+                selectinload(Student.desired_skills).joinedload(StudentDesiredSkill.skill),
+            )
+            .order_by(Student.roll_no.asc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+            .all()
+        )
 
         items = []
         for s in students:
@@ -90,7 +107,7 @@ class StudentService:
                     phone=s.phone,
                     department=s.department,
                     department_name=s.department,
-                    d_id=s.d_id,
+                    d_id=s.resolved_d_id,
                     program=s.program,
                     admission_year=s.admission_year,
                     reputation_points=s.reputation_points,
@@ -110,7 +127,16 @@ class StudentService:
 
     @staticmethod
     def get_student(db: Session, roll_no: str) -> StudentResponse:
-        s = db.query(Student).filter(Student.roll_no == roll_no).first()
+        s = (
+            db.query(Student)
+            .options(
+                joinedload(Student.dept_rel),
+                selectinload(Student.skills).joinedload(StudentSkill.skill),
+                selectinload(Student.desired_skills).joinedload(StudentDesiredSkill.skill),
+            )
+            .filter(Student.roll_no == roll_no)
+            .first()
+        )
         if not s:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -147,7 +173,7 @@ class StudentService:
             phone=s.phone,
             department=s.department,
             department_name=s.department,
-            d_id=s.d_id,
+            d_id=s.resolved_d_id,
             program=s.program,
             admission_year=s.admission_year,
             reputation_points=s.reputation_points,
@@ -179,8 +205,32 @@ class StudentService:
 
         if update_data.name is not None:
             student.name = update_data.name
-        if update_data.phone is not None:
+        if "phone" in update_data.model_fields_set:
             student.phone = update_data.phone
+        if update_data.d_id is not None:
+            dept = db.query(Department).filter(Department.d_id == update_data.d_id).first()
+            if not dept:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"code": "INVALID_DEPARTMENT", "message": f"Department ID {update_data.d_id} not found."}
+                )
+            if dept.program != student.program:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"code": "DEPARTMENT_PROGRAM_MISMATCH", "message": f"Department '{dept.name}' belongs to {dept.program}, not {student.program}."}
+                )
+            student.d_id = dept.d_id
+        elif update_data.department is not None:
+            dept = db.query(Department).filter(
+                Department.name.ilike(update_data.department.strip()),
+                Department.program == student.program
+            ).first()
+            if not dept:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"code": "INVALID_DEPARTMENT", "message": f"Department '{update_data.department}' is not valid for program {student.program}."}
+                )
+            student.d_id = dept.d_id
 
         db.commit()
         db.refresh(student)

@@ -33,6 +33,15 @@ class ExperienceUpdate(BaseModel):
     end_date: Optional[date] = None
     description: Optional[str] = None
 
+    @field_validator("role_title", "organization")
+    @classmethod
+    def clean_optional_text(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            v = v.strip()
+            if len(v) < 2:
+                raise ValueError("Field must be at least 2 characters long.")
+        return v
+
     @model_validator(mode="after")
     def validate_dates(self):
         if self.start_date and self.end_date and self.end_date < self.start_date:

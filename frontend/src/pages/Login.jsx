@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { GraduationCap, Lock, User, AlertCircle, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
+import { GraduationCap, Lock, User, AlertCircle, Mail } from 'lucide-react';
 
 export const Login = () => {
   const { login } = useAuth();
@@ -12,7 +11,6 @@ export const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [verifying, setVerifying] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,25 +25,6 @@ export const Login = () => {
       setError(msg);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleInstantVerify = async () => {
-    if (!rollNo.trim()) return;
-    setVerifying(true);
-    try {
-      await api.post(`/auth/verify-account/${rollNo.trim().toUpperCase()}`);
-      setError('');
-      if (password) {
-        await login(rollNo.trim().toUpperCase(), password);
-        navigate('/mentors');
-      } else {
-        alert(`Account ${rollNo.toUpperCase()} verified! Please enter your password to sign in.`);
-      }
-    } catch (err) {
-      setError(err.response?.data?.error?.message || 'Failed to auto-verify account.');
-    } finally {
-      setVerifying(false);
     }
   };
 
@@ -70,15 +49,16 @@ export const Login = () => {
             </div>
 
             {error.toLowerCase().includes('verify') && (
-              <button
-                type="button"
-                onClick={handleInstantVerify}
-                disabled={verifying}
-                className="w-full py-2 px-3 rounded-lg bg-emerald-700 text-white font-semibold text-xs hover:bg-emerald-800 transition-colors flex items-center justify-center space-x-1.5 shadow-xs"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>{verifying ? 'Activating...' : `Click to Activate & Log In as ${rollNo || 'Student'}`}</span>
-              </button>
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => navigate('/verify-email')}
+                  className="w-full py-2 px-3 rounded-lg bg-academic-burgundy text-white font-semibold text-xs hover:bg-academic-burgundy/90 transition-colors flex items-center justify-center space-x-1.5 shadow-xs"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>Verify Email / Enter Token</span>
+                </button>
+              </div>
             )}
           </div>
         )}

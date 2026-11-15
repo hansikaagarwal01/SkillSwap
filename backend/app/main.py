@@ -145,11 +145,14 @@ app.include_router(analytics_router, prefix="/api/v1")
 # Health Check Endpoint
 @app.get("/health", tags=["Health"])
 def health_check():
+    import fastapi
     db_status = "disconnected"
+    db_version = None
     try:
         from app.db.session import SessionLocal
         db = SessionLocal()
-        db.execute(text("SELECT 1;"))
+        row = db.execute(text("SELECT VERSION();")).fetchone()
+        db_version = row[0] if row else None
         db.close()
         db_status = "connected"
     except Exception as e:
@@ -159,6 +162,8 @@ def health_check():
     return {
         "status": "ok" if db_status == "connected" else "degraded",
         "database": db_status,
+        "db_version": db_version,
+        "fastapi_version": fastapi.__version__,
         "app_env": settings.APP_ENV,
         "project": settings.PROJECT_NAME
     }

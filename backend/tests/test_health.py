@@ -14,6 +14,8 @@ def test_health_endpoint():
     assert data["status"] == "ok"
     assert data["database"] == "connected"
     assert data["project"] == "SkillSwap JKLU"
+    assert data["db_version"] is not None
+    assert data["fastapi_version"] is not None
 
 def test_docs_endpoint():
     response = client.get("/docs")

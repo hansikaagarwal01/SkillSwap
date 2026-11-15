@@ -51,6 +51,13 @@ def create_listing(
     )
 
 
+@router.get("/categories", response_model=list[str])
+def get_listing_categories(
+    db: Session = Depends(get_db),
+):
+    return marketplace_service.get_listing_categories(db=db)
+
+
 @router.get("/mine", response_model=PageResponse[ListingResponse])
 def get_my_listings(
     page: int = Query(1, ge=1),

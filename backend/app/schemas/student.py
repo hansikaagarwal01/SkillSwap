@@ -32,6 +32,8 @@ class StudentDesiredSkillResponse(BaseModel):
 
 
 class StudentUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: Optional[str] = None
     phone: Optional[str] = None
     department: Optional[str] = None

@@ -24,7 +24,7 @@ export const Mentors = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Tab State: 'DIRECTORY' (All 34 students) vs 'MENTORS' (Verified mentors with can_teach=true)
+  // Tab State: 'DIRECTORY' (All students) vs 'MENTORS' (Verified mentors with can_teach=true)
   const [activeTab, setActiveTab] = useState('DIRECTORY');
 
   // Directory (Students) State
@@ -44,8 +44,10 @@ export const Mentors = () => {
   // Filter states
   const [skillsList, setSkillsList] = useState([]);
   const [selectedSkill, setSelectedSkill] = useState('');
+  const [desiredSkill, setDesiredSkill] = useState('');
   const [selectedProgram, setSelectedProgram] = useState('');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   // Request Modal state for mentorship booking
   const [requestModalOpen, setRequestModalOpen] = useState(false);
@@ -78,8 +80,9 @@ export const Mentors = () => {
       params.append('page', studentPage);
       params.append('page_size', 9);
       if (selectedSkill) params.append('skill_id', selectedSkill);
+      if (desiredSkill) params.append('desired_skill_id', desiredSkill);
       if (selectedProgram) params.append('program', selectedProgram);
-      if (search) params.append('q', search);
+      if (debouncedSearch) params.append('q', debouncedSearch);
 
       const resp = await api.get(`/students?${params.toString()}`);
       setStudents(resp.data.items);
@@ -101,7 +104,7 @@ export const Mentors = () => {
       params.append('page_size', 9);
       if (selectedSkill) params.append('skill_id', selectedSkill);
       if (selectedProgram) params.append('program', selectedProgram);
-      if (search) params.append('q', search);
+      if (debouncedSearch) params.append('q', debouncedSearch);
 
       const resp = await api.get(`/mentors?${params.toString()}`);
       setMentors(resp.data.items);
@@ -115,20 +118,32 @@ export const Mentors = () => {
   };
 
   useEffect(() => {
+    if (debouncedSearch === search) return;
+    const timer = setTimeout(() => {
+      setStudentPage(1);
+      setMentorPage(1);
+      setDebouncedSearch(search);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search, debouncedSearch]);
+
+  useEffect(() => {
     if (activeTab === 'DIRECTORY') {
       fetchStudents();
     } else {
       fetchMentors();
     }
-  }, [activeTab, studentPage, mentorPage, selectedSkill, selectedProgram]);
+  }, [activeTab, studentPage, mentorPage, selectedSkill, desiredSkill, selectedProgram, debouncedSearch]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    if (activeTab === 'DIRECTORY') {
-      setStudentPage(1);
+    setStudentPage(1);
+    setMentorPage(1);
+    if (debouncedSearch !== search) {
+      setDebouncedSearch(search);
+    } else if (activeTab === 'DIRECTORY') {
       fetchStudents();
     } else {
-      setMentorPage(1);
       fetchMentors();
     }
   };
@@ -139,7 +154,17 @@ export const Mentors = () => {
       return;
     }
 
-    const defaultSkillId = mentor.skill_id || (mentor.skills && mentor.skills.length > 0 ? mentor.skills[0].skill_id : '');
+    const fallbackSkills = Array.isArray(mentor.skills)
+      ? mentor.skills.filter((sk) => sk.can_teach)
+      : mentor.skill_id
+      ? [{
+          skill_id: mentor.skill_id,
+          skill_name: mentor.skill_name,
+          proficiency_level: mentor.proficiency_level,
+          can_teach: true,
+        }]
+      : [];
+    const defaultSkillId = mentor.skill_id || (fallbackSkills.length > 0 ? fallbackSkills[0].skill_id : '');
 
     setSelectedMentor(mentor);
     setRequestData({
@@ -147,21 +172,29 @@ export const Mentors = () => {
       topic: '',
       mode: 'ONLINE',
       scheduled_at: new Date(Date.now() + 86400000 * 2).toISOString().slice(0, 16),
-      meeting_link: 'https://meet.google.com/abc-defg-hij',
+      meeting_link: '',
     });
     setRequestError('');
     setRequestSuccess('');
 
     try {
       const resp = await api.get(`/students/${mentor.roll_no}/skills`);
-      const allSkills = resp.data && resp.data.length > 0 ? resp.data : (mentor.skills || []);
-      setMentorSkills(allSkills);
-      if (allSkills.length > 0 && !defaultSkillId) {
-        setRequestData((prev) => ({ ...prev, skill_id: allSkills[0].skill_id }));
+      const fetchedSkills = Array.isArray(resp.data) ? resp.data : [];
+      const teachable = fetchedSkills.length > 0
+        ? fetchedSkills.filter((sk) => sk.can_teach)
+        : fallbackSkills;
+      setMentorSkills(teachable);
+      if (teachable.length === 0) {
+        setRequestData((prev) => ({ ...prev, skill_id: '' }));
+        setRequestError('This student has no skills marked as available to teach.');
+      } else if (!teachable.some((sk) => String(sk.skill_id) === String(defaultSkillId))) {
+        setRequestData((prev) => ({ ...prev, skill_id: teachable[0].skill_id }));
       }
     } catch (err) {
-      const fallback = mentor.skills || [{ skill_id: mentor.skill_id, skill_name: mentor.skill_name, proficiency_level: mentor.proficiency_level }];
-      setMentorSkills(fallback);
+      setMentorSkills(fallbackSkills);
+      if (fallbackSkills.length === 0) {
+        setRequestError('This student has no skills marked as available to teach.');
+      }
     }
 
     setRequestModalOpen(true);
@@ -180,7 +213,7 @@ export const Mentors = () => {
         topic: requestData.topic,
         mode: requestData.mode,
         scheduled_at: new Date(requestData.scheduled_at).toISOString(),
-        meeting_link: requestData.mode === 'ONLINE' ? requestData.meeting_link : null,
+        meeting_link: requestData.mode === 'ONLINE' ? (requestData.meeting_link.trim() || null) : null,
       };
 
       await api.post('/sessions', payload);
@@ -220,7 +253,7 @@ export const Mentors = () => {
                 : 'text-academic-muted hover:text-academic-primary'
             }`}
           >
-            Student Directory ({studentTotal || 34})
+            Student Directory ({studentTotal ?? 0})
           </button>
           <button
             onClick={() => setActiveTab('MENTORS')}
@@ -237,17 +270,30 @@ export const Mentors = () => {
 
       {/* Filter and Search Bar */}
       <div className="bg-academic-card border border-academic-border rounded-xl p-4 shadow-xs">
-        <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+        <form
+          onSubmit={handleSearchSubmit}
+          className={`grid grid-cols-1 gap-3 text-xs ${
+            activeTab === 'DIRECTORY' ? 'sm:grid-cols-5' : 'sm:grid-cols-4'
+          }`}
+        >
           {/* Search */}
-          <div className="relative sm:col-span-2">
-            <input
-              type="text"
-              placeholder="Search by student name, roll number, or skill (e.g. Python, Guitar)..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary placeholder:text-academic-muted/50 focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
-            />
-            <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-academic-muted" />
+          <div className="sm:col-span-2 flex gap-2">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Search by student name, roll number, or skill (e.g. Python, Guitar)..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary placeholder:text-academic-muted/50 focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
+              />
+              <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-academic-muted" />
+            </div>
+            <button
+              type="submit"
+              className="px-3.5 py-2 rounded-lg bg-academic-burgundy text-white font-semibold hover:bg-academic-burgundy/90 transition-colors shrink-0"
+            >
+              Search
+            </button>
           </div>
 
           {/* Program filter */}
@@ -287,6 +333,26 @@ export const Mentors = () => {
               ))}
             </select>
           </div>
+
+          {activeTab === 'DIRECTORY' && (
+            <div>
+              <select
+                value={desiredSkill}
+                onChange={(e) => {
+                  setDesiredSkill(e.target.value);
+                  setStudentPage(1);
+                }}
+                className="w-full px-2.5 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
+              >
+                <option value="">Wants to Learn (Any)</option>
+                {skillsList.map((sk) => (
+                  <option key={sk.skill_id} value={sk.skill_id}>
+                    Wants: {sk.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </form>
       </div>
 
@@ -379,21 +445,28 @@ export const Mentors = () => {
                 </div>
 
                 <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={() => openRequestModal(st)}
-                    disabled={user?.roll_no === st.roll_no || !st.skills || st.skills.length === 0}
-                    className="w-full py-2.5 rounded-lg bg-academic-burgundy text-white font-semibold text-xs shadow-xs hover:bg-academic-burgundy/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center space-x-1.5"
-                  >
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span>
-                      {user?.roll_no === st.roll_no
-                        ? 'Your Own Profile'
-                        : !st.skills || st.skills.length === 0
-                        ? 'No Skills Listed'
-                        : 'Request Peer Session'}
-                    </span>
-                  </button>
+                  {(() => {
+                    const teachableSkills = (st.skills || []).filter((sk) => sk.can_teach);
+                    const isSelf = user?.roll_no === st.roll_no;
+                    const cannotTeach = teachableSkills.length === 0;
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => openRequestModal(st)}
+                        disabled={isSelf || cannotTeach}
+                        className="w-full py-2.5 rounded-lg bg-academic-burgundy text-white font-semibold text-xs shadow-xs hover:bg-academic-burgundy/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center space-x-1.5"
+                      >
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>
+                          {isSelf
+                            ? 'Your Own Profile'
+                            : cannotTeach
+                            ? (!st.skills || st.skills.length === 0 ? 'No Skills Listed' : 'Not Available to Mentor')
+                            : 'Request Peer Session'}
+                        </span>
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             ))}
@@ -615,7 +688,7 @@ export const Mentors = () => {
             </button>
             <button
               type="submit"
-              disabled={requestLoading}
+              disabled={requestLoading || mentorSkills.length === 0}
               className="px-4 py-2 rounded-lg bg-academic-burgundy text-white font-semibold shadow-xs hover:bg-academic-burgundy/90 disabled:opacity-50"
             >
               {requestLoading ? 'Sending Request...' : 'Confirm Mentorship Request'}

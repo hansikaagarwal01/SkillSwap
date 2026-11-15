@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional, Literal
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import func, and_, or_, desc, select
 from fastapi import HTTPException, status
 from math import ceil
@@ -49,16 +49,20 @@ class LearningService:
                 detail={"code": "MENTOR_NOT_FOUND", "message": f"Mentor {mentor_roll} not found."}
             )
 
-        # Verify mentor possesses this skill
+        # Verify mentor possesses this skill and has opted in to teach it
         teaching_skill = db.query(StudentSkill).filter(
             StudentSkill.roll_no == mentor_roll,
-            StudentSkill.skill_id == req.skill_id
+            StudentSkill.skill_id == req.skill_id,
+            StudentSkill.can_teach.is_(True),
         ).first()
 
         if not teaching_skill:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"code": "SKILL_NOT_TAUGHT", "message": "Mentor is not registered to teach this skill."}
+                detail={
+                    "code": "SKILL_NOT_TAUGHT",
+                    "message": "This student has not opted in to teach this skill (can_teach must be enabled).",
+                }
             )
 
         new_session = LearningSession(
@@ -121,7 +125,18 @@ class LearningService:
 
         total = query.count()
         total_pages = ceil(total / page_size) if total > 0 else 1
-        sessions = query.order_by(LearningSession.scheduled_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+        sessions = (
+            query.options(
+                joinedload(LearningSession.mentor),
+                joinedload(LearningSession.learner),
+                joinedload(LearningSession.skill),
+                selectinload(LearningSession.reviews),
+            )
+            .order_by(LearningSession.scheduled_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+            .all()
+        )
 
         items = [LearningService.to_session_response(s, roll) for s in sessions]
         return PageResponse(
@@ -556,10 +571,16 @@ class LearningService:
             exp.exp_type = req.exp_type
         if req.start_date is not None:
             exp.start_date = req.start_date
-        if req.end_date is not None:
+        if "end_date" in req.model_fields_set:
             exp.end_date = req.end_date
-        if req.description is not None:
+        if "description" in req.model_fields_set:
             exp.description = req.description
+
+        if exp.end_date is not None and exp.end_date < exp.start_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"code": "INVALID_DATES", "message": "End date must be greater than or equal to start date."}
+            )
 
         db.commit()
         db.refresh(exp)
@@ -614,7 +635,7 @@ class LearningService:
         is_participant = (s.mentor_roll_no == user_roll or s.learner_roll_no == user_roll)
         link = s.meeting_link if is_participant else None
 
-        has_rev = len(s.reviews) > 0 if s.reviews else False
+        has_rev = any(r.roll_no == user_roll for r in s.reviews) if s.reviews else False
 
         return SessionResponse(
             session_id=s.session_id,

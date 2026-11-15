@@ -25,14 +25,18 @@ export const Profile = () => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Edit phone modal
+  // Edit profile details modal
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [phone, setPhone] = useState('');
+  const [editDeptId, setEditDeptId] = useState('');
+  const [departments, setDepartments] = useState([]);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState('');
 
-  // Add Experience modal
+  // Experience Management modal
+  const [experiences, setExperiences] = useState([]);
   const [expModalOpen, setExpModalOpen] = useState(false);
+  const [editingExp, setEditingExp] = useState(null);
   const [expForm, setExpForm] = useState({
     role_title: '',
     organization: '',
@@ -57,12 +61,26 @@ export const Profile = () => {
   const [skillError, setSkillError] = useState('');
 
   const fetchProfile = async () => {
-    if (!user) return;
+    if (!user) {
+      setProfile(null);
+      setExperiences([]);
+      setPhone('');
+      setEditDeptId('');
+      return;
+    }
+    const currentRoll = user.roll_no;
     setLoading(true);
     try {
-      const resp = await api.get(`/students/${user.roll_no}`);
-      setProfile(resp.data);
-      setPhone(resp.data.phone || '');
+      const [profResp, expResp] = await Promise.all([
+        api.get(`/students/${currentRoll}`),
+        api.get(`/students/${currentRoll}/experiences`),
+      ]);
+      if (user?.roll_no === currentRoll) {
+        setProfile(profResp.data);
+        setPhone(profResp.data.phone || '');
+        setEditDeptId(profResp.data.d_id ? String(profResp.data.d_id) : '');
+        setExperiences(expResp.data || []);
+      }
     } catch (err) {
       console.error('Failed to load profile', err);
     } finally {
@@ -71,9 +89,17 @@ export const Profile = () => {
   };
 
   useEffect(() => {
+    if (!user) {
+      setProfile(null);
+      setExperiences([]);
+      setPhone('');
+      setEditDeptId('');
+      return;
+    }
     fetchProfile();
     api.get('/skills').then((res) => setCatalogSkills(res.data)).catch(() => {});
-  }, [user]);
+    api.get('/departments').then((res) => setDepartments(res.data || [])).catch(() => {});
+  }, [user?.roll_no]);
 
   const openAddSkillModal = () => {
     setEditingSkill(null);
@@ -131,9 +157,13 @@ export const Profile = () => {
     setEditLoading(true);
     setEditError('');
     try {
-      await api.patch(`/students/${user.roll_no}`, {
+      const payload = {
         phone: phone.trim() || null,
-      });
+      };
+      if (editDeptId) {
+        payload.d_id = parseInt(editDeptId, 10);
+      }
+      await api.patch(`/students/${user.roll_no}`, payload);
       setEditModalOpen(false);
       fetchProfile();
       refreshUser();
@@ -144,16 +174,51 @@ export const Profile = () => {
     }
   };
 
-  const handleAddExperience = async (e) => {
+  const openAddExperienceModal = () => {
+    setEditingExp(null);
+    setExpForm({
+      role_title: '',
+      organization: '',
+      exp_type: 'INTERNSHIP',
+      start_date: '',
+      end_date: '',
+      description: '',
+    });
+    setExpError('');
+    setExpModalOpen(true);
+  };
+
+  const openEditExperienceModal = (exp) => {
+    setEditingExp(exp);
+    setExpForm({
+      role_title: exp.role_title || '',
+      organization: exp.organization || '',
+      exp_type: exp.exp_type || 'PROJECT',
+      start_date: exp.start_date || '',
+      end_date: exp.end_date || '',
+      description: exp.description || '',
+    });
+    setExpError('');
+    setExpModalOpen(true);
+  };
+
+  const handleSaveExperience = async (e) => {
     e.preventDefault();
     setExpLoading(true);
     setExpError('');
     try {
-      await api.post(`/students/${user.roll_no}/experiences`, {
+      const payload = {
         ...expForm,
         end_date: expForm.end_date || null,
-      });
+        description: expForm.description.trim() || null,
+      };
+      if (editingExp) {
+        await api.patch(`/experiences/${user.roll_no}/${editingExp.exp_no}`, payload);
+      } else {
+        await api.post(`/students/${user.roll_no}/experiences`, payload);
+      }
       setExpModalOpen(false);
+      setEditingExp(null);
       setExpForm({
         role_title: '',
         organization: '',
@@ -164,9 +229,19 @@ export const Profile = () => {
       });
       fetchProfile();
     } catch (err) {
-      setExpError(err.response?.data?.error?.message || 'Failed to add experience.');
+      setExpError(err.response?.data?.error?.message || `Failed to ${editingExp ? 'update' : 'add'} experience.`);
     } finally {
       setExpLoading(false);
+    }
+  };
+
+  const handleDeleteExperience = async (expNo) => {
+    if (!window.confirm('Are you sure you want to delete this experience entry?')) return;
+    try {
+      await api.delete(`/experiences/${user.roll_no}/${expNo}`);
+      fetchProfile();
+    } catch (err) {
+      alert(err.response?.data?.error?.message || 'Failed to delete experience.');
     }
   };
 
@@ -330,7 +405,7 @@ export const Profile = () => {
               <h3 className="font-serif font-bold text-base text-academic-primary">Academic Experience</h3>
             </div>
             <button
-              onClick={() => setExpModalOpen(true)}
+              onClick={openAddExperienceModal}
               className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-md bg-academic-burgundy text-white text-xs font-semibold hover:bg-academic-burgundy/90 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -338,22 +413,40 @@ export const Profile = () => {
             </button>
           </div>
 
-          {profile?.experiences?.length === 0 ? (
+          {experiences.length === 0 ? (
             <p className="text-xs text-academic-muted py-6 text-center">
               No internships or projects listed yet. Click Add to showcase your portfolio.
             </p>
           ) : (
             <div className="space-y-3">
-              {profile?.experiences?.map((exp) => (
+              {experiences.map((exp) => (
                 <div key={exp.exp_no} className="p-3.5 rounded-lg border border-academic-border bg-academic-secondary/30 space-y-1 text-xs">
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-2">
                     <div>
                       <h4 className="font-semibold text-academic-primary">{exp.role_title}</h4>
                       <p className="text-academic-muted font-medium">{exp.organization}</p>
                     </div>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider bg-academic-secondary px-2 py-0.5 rounded border border-academic-border">
-                      {exp.exp_type}
-                    </span>
+                    <div className="flex items-center space-x-1.5 shrink-0">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider bg-academic-secondary px-2 py-0.5 rounded border border-academic-border">
+                        {exp.exp_type}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => openEditExperienceModal(exp)}
+                        className="p-1 text-academic-muted hover:text-academic-primary hover:bg-academic-secondary rounded transition-colors"
+                        title="Edit experience"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteExperience(exp.exp_no)}
+                        className="p-1 text-academic-muted hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                        title="Delete experience"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
 
                   <p className="text-[11px] text-academic-muted flex items-center space-x-1">
@@ -398,6 +491,25 @@ export const Profile = () => {
 
           <div>
             <label className="block font-semibold text-academic-primary mb-1 uppercase tracking-wider">
+              Department
+            </label>
+            <select
+              value={editDeptId}
+              onChange={(e) => setEditDeptId(e.target.value)}
+              className="w-full p-2.5 rounded-lg border border-academic-border bg-academic-bg text-academic-primary focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
+            >
+              {departments
+                .filter((d) => d.program === profile?.program)
+                .map((dept) => (
+                  <option key={dept.d_id} value={String(dept.d_id)}>
+                    {dept.name}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-academic-primary mb-1 uppercase tracking-wider">
               Phone Number
             </label>
             <input
@@ -428,9 +540,16 @@ export const Profile = () => {
         </form>
       </Modal>
 
-      {/* Add Experience Modal */}
-      <Modal isOpen={expModalOpen} onClose={() => setExpModalOpen(false)} title="Add Academic Experience / Project">
-        <form onSubmit={handleAddExperience} className="space-y-4 text-xs">
+      {/* Add / Edit Experience Modal */}
+      <Modal
+        isOpen={expModalOpen}
+        onClose={() => {
+          setExpModalOpen(false);
+          setEditingExp(null);
+        }}
+        title={editingExp ? 'Edit Academic Experience / Project' : 'Add Academic Experience / Project'}
+      >
+        <form onSubmit={handleSaveExperience} className="space-y-4 text-xs">
           {expError && (
             <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg">
               {expError}
@@ -537,7 +656,7 @@ export const Profile = () => {
               disabled={expLoading}
               className="px-4 py-2 rounded-lg bg-academic-burgundy text-white font-semibold shadow-xs hover:bg-academic-burgundy/90 disabled:opacity-50"
             >
-              {expLoading ? 'Saving...' : 'Add to Portfolio'}
+              {expLoading ? 'Saving...' : editingExp ? 'Save Changes' : 'Add to Portfolio'}
             </button>
           </div>
         </form>

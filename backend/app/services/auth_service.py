@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
 from app.core.config import settings
+from app.core.email import send_verification_email
 from app.core.security import (
     get_password_hash,
     verify_password,
@@ -13,6 +14,7 @@ from app.core.security import (
     generate_verification_token
 )
 from app.models.student import Student
+from app.models.department import Department, DEFAULT_DEPT_ID_BY_PROGRAM
 from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, UserMeResponse
 
 logger = logging.getLogger("skillswap.auth")
@@ -31,8 +33,42 @@ class AuthService:
             raise ValueError("Unsupported program in roll number.")
         return program, year
 
+    @staticmethod
+    def resolve_department_id(
+        db: Session,
+        program: str,
+        req_d_id: Optional[int],
+        req_department_name: Optional[str] = None,
+    ) -> int:
+        if req_d_id is not None:
+            dept = db.query(Department).filter(Department.d_id == req_d_id).first()
+            if not dept:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"code": "INVALID_DEPARTMENT", "message": f"Department ID {req_d_id} does not exist."}
+                )
+            if dept.program != program:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"code": "DEPARTMENT_PROGRAM_MISMATCH", "message": f"Department '{dept.name}' belongs to {dept.program}, not {program}."}
+                )
+            return dept.d_id
+
+        if req_department_name:
+            dept = db.query(Department).filter(
+                Department.name.ilike(req_department_name.strip()),
+                Department.program == program
+            ).first()
+            if dept:
+                return dept.d_id
+
+        return DEFAULT_DEPT_ID_BY_PROGRAM.get(program, 1)
+
     @classmethod
     def register(cls, db: Session, req: RegisterRequest) -> dict[str, str]:
+        program, admission_year = cls.derive_program_and_year(req.roll_no)
+        resolved_did = cls.resolve_department_id(db, program, req.d_id, req.department)
+
         # Check if roll_no already exists
         existing_roll = db.query(Student).filter(Student.roll_no == req.roll_no).first()
         if existing_roll:
@@ -51,13 +87,23 @@ class AuthService:
                     existing_roll.name = req.name.strip()
                 if req.phone:
                     existing_roll.phone = req.phone.strip()
+                existing_roll.d_id = resolved_did
                 existing_roll.password_hash = get_password_hash(req.password)
+                existing_roll.role = existing_roll.role or "STUDENT"
                 existing_roll.account_status = "UNVERIFIED"
                 existing_roll.email_verified = False
                 existing_roll.token_version = 1
                 existing_roll.verification_token_hash = token_hashed
                 existing_roll.verification_token_expires_at = expires_at
                 db.commit()
+
+                # Dispatch verification email via SMTP if configured, or log in development
+                send_verification_email(
+                    email=existing_roll.email,
+                    name=existing_roll.name,
+                    roll_no=req.roll_no,
+                    raw_token=raw_token,
+                )
 
                 if settings.APP_ENV == "development":
                     logger.info(
@@ -101,8 +147,10 @@ class AuthService:
                 email=req.email,
                 phone=req.phone,
                 program=program,
+                d_id=resolved_did,
                 admission_year=admission_year,
                 reputation_points=0,
+                role="STUDENT",
                 password_hash=get_password_hash(req.password),
                 account_status="UNVERIFIED",
                 email_verified=False,
@@ -112,6 +160,14 @@ class AuthService:
             )
             db.add(new_student)
             db.commit()
+
+            # Dispatch verification email via SMTP if configured, or log in development
+            send_verification_email(
+                email=req.email,
+                name=req.name,
+                roll_no=req.roll_no,
+                raw_token=raw_token,
+            )
 
             # Handle Email Delivery / Dev Logging
             if settings.APP_ENV == "development":
@@ -176,6 +232,16 @@ class AuthService:
         return {"message": status_msg, "roll_no": student.roll_no}
 
     @classmethod
+    def bootstrap_admin(cls, db: Session, roll_no: str) -> bool:
+        """Explicit administrator bootstrap procedure."""
+        student = db.query(Student).filter(Student.roll_no == roll_no.strip().upper()).first()
+        if not student:
+            return False
+        student.role = "ADMIN"
+        db.commit()
+        return True
+
+    @classmethod
     def resend_verification(cls, db: Session, email: str) -> dict[str, str]:
         student = db.query(Student).filter(Student.email == email).first()
         generic_msg = "If an unverified account exists for this email, a new verification link has been sent."
@@ -190,6 +256,14 @@ class AuthService:
         student.verification_token_hash = token_hashed
         student.verification_token_expires_at = expires_at
         db.commit()
+
+        # Dispatch verification email via SMTP if configured, or log in development
+        send_verification_email(
+            email=student.email,
+            name=student.name,
+            roll_no=student.roll_no,
+            raw_token=raw_token,
+        )
 
         if settings.APP_ENV == "development":
             logger.info(
@@ -276,7 +350,7 @@ class AuthService:
             phone=student.phone,
             department=student.department,
             department_name=student.department,
-            d_id=student.d_id,
+            d_id=student.resolved_d_id,
             program=student.program,
             admission_year=student.admission_year,
             reputation_points=student.reputation_points,

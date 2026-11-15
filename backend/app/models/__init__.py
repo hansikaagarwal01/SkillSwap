@@ -1,4 +1,5 @@
 from app.db.base import Base
+from app.models.department import Department
 from app.models.student import Student
 from app.models.skill import Skill, StudentSkill, StudentDesiredSkill
 from app.models.session import LearningSession
@@ -11,6 +12,7 @@ from app.models.notification import Notification
 
 __all__ = [
     "Base",
+    "Department",
     "Student",
     "Skill",
     "StudentSkill",

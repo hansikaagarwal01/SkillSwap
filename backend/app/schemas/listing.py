@@ -27,6 +27,15 @@ class ListingUpdate(BaseModel):
     item_condition: Optional[Literal["NEW", "LIKE_NEW", "GOOD", "FAIR"]] = None
     status: Optional[Literal["AVAILABLE", "IN_PROGRESS", "SOLD", "REMOVED"]] = None
 
+    @field_validator("title")
+    @classmethod
+    def clean_title(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            v = v.strip()
+            if len(v) < 3:
+                raise ValueError("Title must be at least 3 characters.")
+        return v
+
 
 class ListingResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

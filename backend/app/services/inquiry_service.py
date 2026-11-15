@@ -1,7 +1,7 @@
 from math import ceil
 from typing import Optional, List
 from sqlalchemy import desc, func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status
 
 from app.models.inquiry import MarketplaceInquiry
@@ -123,7 +123,15 @@ def get_received_inquiries(
     page: int = 1,
     page_size: int = 20,
 ) -> PageResponse[InquiryResponse]:
-    query = db.query(MarketplaceInquiry).filter(MarketplaceInquiry.seller_roll_no == seller_roll)
+    query = (
+        db.query(MarketplaceInquiry)
+        .options(
+            joinedload(MarketplaceInquiry.listing),
+            joinedload(MarketplaceInquiry.buyer),
+            joinedload(MarketplaceInquiry.seller)
+        )
+        .filter(MarketplaceInquiry.seller_roll_no == seller_roll)
+    )
     total = query.count()
     items = (
         query.order_by(desc(MarketplaceInquiry.created_at))
@@ -147,7 +155,15 @@ def get_sent_inquiries(
     page: int = 1,
     page_size: int = 20,
 ) -> PageResponse[InquiryResponse]:
-    query = db.query(MarketplaceInquiry).filter(MarketplaceInquiry.buyer_roll_no == buyer_roll)
+    query = (
+        db.query(MarketplaceInquiry)
+        .options(
+            joinedload(MarketplaceInquiry.listing),
+            joinedload(MarketplaceInquiry.buyer),
+            joinedload(MarketplaceInquiry.seller)
+        )
+        .filter(MarketplaceInquiry.buyer_roll_no == buyer_roll)
+    )
     total = query.count()
     items = (
         query.order_by(desc(MarketplaceInquiry.created_at))

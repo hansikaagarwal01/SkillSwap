@@ -24,6 +24,8 @@ import {
   Send,
   Inbox,
   SendHorizontal,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 
 export const Marketplace = () => {
@@ -41,21 +43,30 @@ export const Marketplace = () => {
   const [loading, setLoading] = useState(true);
 
   // Filters
+  const [categories, setCategories] = useState([]);
   const [category, setCategory] = useState('');
   const [itemCondition, setItemCondition] = useState('');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // Post Listing Modal
+  // Post / Edit Listing Modal
   const [postModalOpen, setPostModalOpen] = useState(false);
+  const [editingListing, setEditingListing] = useState(null);
   const [postForm, setPostForm] = useState({
     title: '',
     description: '',
     price: '',
-    category: 'Textbooks',
+    category: 'Books & Notes',
     item_condition: 'GOOD',
   });
   const [postLoading, setPostLoading] = useState(false);
   const [postError, setPostError] = useState('');
+
+  // Delete Listing Modal
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   // Send Inquiry Modal
   const [inquiryModalOpen, setInquiryModalOpen] = useState(false);
@@ -96,22 +107,42 @@ export const Marketplace = () => {
   const handleTabChange = (newTab) => {
     setActiveTab(newTab);
     setPage(1);
+    setInquiries([]);
+    setListings([]);
     setSearchParams(newTab === 'ALL' ? {} : { tab: newTab });
   };
 
-  const fetchData = async () => {
+  const fetchData = async (overrideSearch) => {
+    const activeSearch = overrideSearch !== undefined ? overrideSearch : debouncedSearch;
+    const currentRoll = user?.roll_no;
+    const currentTab = activeTab;
     setLoading(true);
+
     try {
       if (activeTab === 'INQUIRIES' || activeTab === 'SENT_INQUIRIES') {
+        if (!user) {
+          setInquiries([]);
+          setTotal(0);
+          setTotalPages(1);
+          return;
+        }
         const endpoint =
           activeTab === 'INQUIRIES'
             ? '/marketplace/inquiries/received'
             : '/marketplace/inquiries/sent';
         const resp = await api.get(`${endpoint}?page=${page}&page_size=10`);
-        setInquiries(resp.data.items || []);
-        setTotal(resp.data.total);
-        setTotalPages(resp.data.total_pages);
+        if (user?.roll_no === currentRoll && activeTab === currentTab) {
+          setInquiries(resp.data.items || []);
+          setTotal(resp.data.total);
+          setTotalPages(resp.data.total_pages);
+        }
       } else {
+        if ((activeTab === 'MINE' || activeTab === 'PURCHASES') && !user) {
+          setListings([]);
+          setTotal(0);
+          setTotalPages(1);
+          return;
+        }
         let endpoint = '/listings';
         const params = new URLSearchParams();
         params.append('page', page);
@@ -124,29 +155,85 @@ export const Marketplace = () => {
         } else {
           if (category) params.append('category', category);
           if (itemCondition) params.append('item_condition', itemCondition);
-          if (search) params.append('search', search);
+          if (activeSearch.trim()) params.append('search', activeSearch.trim());
         }
 
         const resp = await api.get(`${endpoint}?${params.toString()}`);
-        setListings(resp.data.items || []);
-        setTotal(resp.data.total);
-        setTotalPages(resp.data.total_pages);
+        if (user?.roll_no === currentRoll && activeTab === currentTab) {
+          setListings(resp.data.items || []);
+          setTotal(resp.data.total);
+          setTotalPages(resp.data.total_pages);
+        }
       }
     } catch (err) {
       console.error('Failed to load marketplace data', err);
     } finally {
-      setLoading(false);
+      if (user?.roll_no === currentRoll && activeTab === currentTab) {
+        setLoading(false);
+      }
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const resp = await api.get('/listings/categories');
+      setCategories(resp.data || []);
+    } catch (err) {
+      console.error('Failed to load listing categories', err);
     }
   };
 
   useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  // Debounce marketplace keyword search
+  useEffect(() => {
+    if (search === debouncedSearch) return;
+    const timer = setTimeout(() => {
+      setPage(1);
+      setDebouncedSearch(search);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search, debouncedSearch]);
+
+  useEffect(() => {
     fetchData();
-  }, [page, activeTab, category, itemCondition]);
+  }, [page, activeTab, category, itemCondition, debouncedSearch, user?.roll_no]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     setPage(1);
-    fetchData();
+    setDebouncedSearch(search);
+    if (search === debouncedSearch && page === 1) {
+      fetchData(search);
+    }
+  };
+
+  const openCreateListingModal = () => {
+    setEditingListing(null);
+    setPostForm({
+      title: '',
+      description: '',
+      price: '',
+      category: categories[0] || 'Books & Notes',
+      item_condition: 'GOOD',
+    });
+    setPostError('');
+    setPostModalOpen(true);
+  };
+
+  const openEditListingModal = (item) => {
+    setEditingListing(item);
+    setPostForm({
+      title: item.title,
+      description: item.description,
+      price: String(parseFloat(item.price)),
+      category: item.category,
+      item_condition: item.item_condition,
+    });
+    setPostError('');
+    setPostModalOpen(true);
   };
 
   const handlePostSubmit = async (e) => {
@@ -154,17 +241,46 @@ export const Marketplace = () => {
     setPostLoading(true);
     setPostError('');
     try {
-      await api.post('/listings', {
+      const payload = {
         ...postForm,
         price: parseFloat(postForm.price),
-      });
+      };
+      if (editingListing) {
+        await api.patch(`/listings/${editingListing.listing_id}`, payload);
+      } else {
+        await api.post('/listings', payload);
+      }
       setPostModalOpen(false);
-      setPostForm({ title: '', description: '', price: '', category: 'Textbooks', item_condition: 'GOOD' });
+      setEditingListing(null);
+      setPostForm({ title: '', description: '', price: '', category: categories[0] || 'Books & Notes', item_condition: 'GOOD' });
+      fetchCategories();
       fetchData();
     } catch (err) {
-      setPostError(err.response?.data?.error?.message || 'Failed to create listing.');
+      setPostError(err.response?.data?.error?.message || `Failed to ${editingListing ? 'update' : 'create'} listing.`);
     } finally {
       setPostLoading(false);
+    }
+  };
+
+  const openDeleteModal = (item) => {
+    setDeleteTarget(item);
+    setDeleteError('');
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteListing = async () => {
+    setDeleteLoading(true);
+    setDeleteError('');
+    try {
+      await api.delete(`/listings/${deleteTarget.listing_id}`);
+      setDeleteModalOpen(false);
+      setDeleteTarget(null);
+      fetchCategories();
+      fetchData();
+    } catch (err) {
+      setDeleteError(err.response?.data?.error?.message || 'Failed to delete listing.');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -294,7 +410,7 @@ export const Marketplace = () => {
 
         {user && (
           <button
-            onClick={() => setPostModalOpen(true)}
+            onClick={openCreateListingModal}
             className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-lg bg-academic-burgundy text-white font-semibold text-xs shadow-xs hover:bg-academic-burgundy/90 transition-all self-start sm:self-auto"
           >
             <Plus className="w-4 h-4" />
@@ -335,15 +451,23 @@ export const Marketplace = () => {
         {/* Filter controls (only on Explore tab) */}
         {activeTab === 'ALL' && (
           <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-            <div className="relative sm:col-span-2">
-              <input
-                type="text"
-                placeholder="Search items by title or keywords..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary placeholder:text-academic-muted/50 focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
-              />
-              <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-academic-muted" />
+            <div className="relative sm:col-span-2 flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Search items by title or keywords..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary placeholder:text-academic-muted/50 focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
+                />
+                <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-academic-muted" />
+              </div>
+              <button
+                type="submit"
+                className="px-3.5 py-2 rounded-lg bg-academic-burgundy text-white font-semibold hover:bg-academic-burgundy/90 transition-colors shrink-0"
+              >
+                Search
+              </button>
             </div>
 
             <div>
@@ -356,11 +480,11 @@ export const Marketplace = () => {
                 className="w-full px-2.5 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
               >
                 <option value="">All Categories</option>
-                <option value="Textbooks">Textbooks</option>
-                <option value="Electronics">Electronics</option>
-                <option value="Lab Equipment">Lab Equipment</option>
-                <option value="Hostel Essentials">Hostel Essentials</option>
-                <option value="Stationery">Stationery</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -629,9 +753,29 @@ export const Marketplace = () => {
                   <div className="pt-2 border-t border-academic-border/60">
                     {item.status === 'AVAILABLE' ? (
                       isSeller ? (
-                        <span className="block text-center text-xs font-semibold text-academic-muted py-2 bg-academic-secondary/60 rounded-lg">
-                          Your Active Listing
-                        </span>
+                        <div className="space-y-2">
+                          <span className="block text-center text-[11px] font-semibold text-academic-muted py-1 bg-academic-secondary/60 rounded">
+                            Your Active Listing
+                          </span>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openEditListingModal(item)}
+                              className="py-2 rounded-lg border border-academic-border bg-academic-secondary hover:bg-academic-border/60 text-academic-primary font-semibold text-xs transition-all flex items-center justify-center space-x-1"
+                            >
+                              <Edit2 className="w-3.5 h-3.5 text-academic-muted" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openDeleteModal(item)}
+                              className="py-2 rounded-lg border border-rose-300 text-rose-700 bg-rose-50/60 hover:bg-rose-100 font-semibold text-xs transition-all flex items-center justify-center space-x-1"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        </div>
                       ) : (
                         <div className="grid grid-cols-2 gap-2">
                           <button
@@ -722,8 +866,15 @@ export const Marketplace = () => {
       {/* Pagination */}
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
-      {/* Post Listing Modal */}
-      <Modal isOpen={postModalOpen} onClose={() => setPostModalOpen(false)} title="Post Item on Campus Marketplace">
+      {/* Post / Edit Listing Modal */}
+      <Modal
+        isOpen={postModalOpen}
+        onClose={() => {
+          setPostModalOpen(false);
+          setEditingListing(null);
+        }}
+        title={editingListing ? 'Edit Marketplace Listing' : 'Post Item on Campus Marketplace'}
+      >
         <form onSubmit={handlePostSubmit} className="space-y-4 text-xs">
           {postError && (
             <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg">
@@ -755,11 +906,26 @@ export const Marketplace = () => {
                 onChange={(e) => setPostForm({ ...postForm, category: e.target.value })}
                 className="w-full p-2.5 rounded-lg border border-academic-border bg-academic-bg text-academic-primary focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
               >
-                <option value="Textbooks">Textbooks</option>
-                <option value="Electronics">Electronics</option>
-                <option value="Lab Equipment">Lab Equipment</option>
-                <option value="Hostel Essentials">Hostel Essentials</option>
-                <option value="Stationery">Stationery</option>
+                {Array.from(
+                  new Set([
+                    ...categories,
+                    'Campus Essentials',
+                    'Books & Notes',
+                    'Art & Design',
+                    'Courses & Tutoring',
+                    'Digital Resources',
+                    'Academic Services',
+                    'Hobbies & Games',
+                    'Electronics',
+                    'Lab Equipment',
+                  ])
+                )
+                  .sort()
+                  .map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
               </select>
             </div>
 
@@ -823,7 +989,7 @@ export const Marketplace = () => {
               disabled={postLoading}
               className="px-4 py-2 rounded-lg bg-academic-burgundy text-white font-semibold shadow-xs hover:bg-academic-burgundy/90 disabled:opacity-50"
             >
-              {postLoading ? 'Posting...' : 'Publish Listing'}
+              {postLoading ? (editingListing ? 'Saving...' : 'Posting...') : editingListing ? 'Save Changes' : 'Publish Listing'}
             </button>
           </div>
         </form>
@@ -1100,6 +1266,47 @@ export const Marketplace = () => {
               className="px-4 py-2 rounded-lg bg-rose-700 text-white font-semibold shadow-xs hover:bg-rose-800 disabled:opacity-50"
             >
               {cancelLoading ? 'Releasing...' : 'Confirm Release to Available'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Listing Modal */}
+      <Modal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        title="Delete Marketplace Listing"
+      >
+        <div className="space-y-4 text-xs">
+          {deleteError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg">
+              {deleteError}
+            </div>
+          )}
+
+          <p className="text-academic-primary">
+            Are you sure you want to permanently remove <strong className="font-serif">{deleteTarget?.title}</strong> from the campus marketplace?
+          </p>
+
+          <p className="text-academic-muted leading-relaxed">
+            This removes the listing record from the database. Completed transactions or in-progress deals cannot be deleted.
+          </p>
+
+          <div className="pt-2 flex justify-end space-x-2">
+            <button
+              type="button"
+              onClick={() => setDeleteModalOpen(false)}
+              className="px-4 py-2 rounded-lg border border-academic-border bg-academic-card text-academic-muted hover:bg-academic-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteListing}
+              disabled={deleteLoading}
+              className="px-4 py-2 rounded-lg bg-rose-700 text-white font-semibold shadow-xs hover:bg-rose-800 disabled:opacity-50"
+            >
+              {deleteLoading ? 'Deleting...' : 'Confirm Delete'}
             </button>
           </div>
         </div>
