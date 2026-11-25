@@ -79,10 +79,6 @@ class AuthService:
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail={"code": "EMAIL_MISMATCH", "message": f"Email {req.email} does not match the college record on file for {req.roll_no}."}
                     )
-                raw_token = generate_verification_token()
-                token_hashed = hash_token(raw_token)
-                expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
-
                 if req.name and req.name.strip():
                     existing_roll.name = req.name.strip()
                 if req.phone:
@@ -90,32 +86,15 @@ class AuthService:
                 existing_roll.d_id = resolved_did
                 existing_roll.password_hash = get_password_hash(req.password)
                 existing_roll.role = existing_roll.role or "STUDENT"
-                existing_roll.account_status = "UNVERIFIED"
-                existing_roll.email_verified = False
+                existing_roll.account_status = "PENDING_APPROVAL" if settings.REQUIRE_ADMIN_APPROVAL else "ACTIVE"
+                existing_roll.email_verified = True
                 existing_roll.token_version = 1
-                existing_roll.verification_token_hash = token_hashed
-                existing_roll.verification_token_expires_at = expires_at
+                existing_roll.verification_token_hash = None
+                existing_roll.verification_token_expires_at = None
                 db.commit()
 
-                # Dispatch verification email via SMTP if configured, or log in development
-                send_verification_email(
-                    email=existing_roll.email,
-                    name=existing_roll.name,
-                    roll_no=req.roll_no,
-                    raw_token=raw_token,
-                )
-
-                if settings.APP_ENV == "development":
-                    logger.info(
-                        "\n============================== [DEV-ONLY VERIFICATION LINK] ==============================\n"
-                        f"Student: {req.roll_no} ({req.email})\n"
-                        f"Token: {raw_token}\n"
-                        f"Verification URL: {settings.FRONTEND_ORIGIN}/verify-email?token={raw_token}\n"
-                        "=========================================================================================\n"
-                    )
-
                 return {
-                    "message": "Survey profile claimed successfully. Please verify your email to activate your account.",
+                    "message": "Survey profile claimed successfully. You can now sign in.",
                     "roll_no": req.roll_no
                 }
             else:
@@ -134,13 +113,8 @@ class AuthService:
 
         program, admission_year = cls.derive_program_and_year(req.roll_no)
 
-        # Generate Email Verification Token
-        raw_token = generate_verification_token()
-        token_hashed = hash_token(raw_token)
-        expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
-
         try:
-            # Create consolidated Student record
+            # Create consolidated Student record (immediately active without email verification)
             new_student = Student(
                 roll_no=req.roll_no,
                 name=req.name,
@@ -152,35 +126,17 @@ class AuthService:
                 reputation_points=0,
                 role="STUDENT",
                 password_hash=get_password_hash(req.password),
-                account_status="UNVERIFIED",
-                email_verified=False,
+                account_status="PENDING_APPROVAL" if settings.REQUIRE_ADMIN_APPROVAL else "ACTIVE",
+                email_verified=True,
                 token_version=1,
-                verification_token_hash=token_hashed,
-                verification_token_expires_at=expires_at
+                verification_token_hash=None,
+                verification_token_expires_at=None
             )
             db.add(new_student)
             db.commit()
 
-            # Dispatch verification email via SMTP if configured, or log in development
-            send_verification_email(
-                email=req.email,
-                name=req.name,
-                roll_no=req.roll_no,
-                raw_token=raw_token,
-            )
-
-            # Handle Email Delivery / Dev Logging
-            if settings.APP_ENV == "development":
-                logger.info(
-                    "\n============================== [DEV-ONLY VERIFICATION LINK] ==============================\n"
-                    f"Student: {req.roll_no} ({req.email})\n"
-                    f"Token: {raw_token}\n"
-                    f"Verification URL: {settings.FRONTEND_ORIGIN}/verify-email?token={raw_token}\n"
-                    "=========================================================================================\n"
-                )
-
             return {
-                "message": "Registration successful. Please verify your email address to activate your account.",
+                "message": "Registration successful. Your account is now active and ready to sign in.",
                 "roll_no": req.roll_no
             }
 
@@ -297,11 +253,11 @@ class AuthService:
                 detail={"code": "INVALID_CREDENTIALS", "message": "Invalid roll number or password."}
             )
 
-        if not student.email_verified:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={"code": "EMAIL_UNVERIFIED", "message": "Please verify your email before logging in."}
-            )
+        if student.account_status == "UNVERIFIED":
+            student.email_verified = True
+            student.account_status = "PENDING_APPROVAL" if settings.REQUIRE_ADMIN_APPROVAL else "ACTIVE"
+            student.verification_token_hash = None
+            student.verification_token_expires_at = None
 
         if student.account_status == "PENDING_APPROVAL":
             raise HTTPException(

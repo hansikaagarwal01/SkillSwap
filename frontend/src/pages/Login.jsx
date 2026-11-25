@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { GraduationCap, Lock, User, AlertCircle, Mail } from 'lucide-react';
+import { GraduationCap, Lock, User, AlertCircle } from 'lucide-react';
 
 export const Login = () => {
   const { login } = useAuth();
@@ -21,7 +21,7 @@ export const Login = () => {
       await login(rollNo.trim().toUpperCase(), password);
       navigate('/mentors');
     } catch (err) {
-      const msg = err.response?.data?.error?.message || 'Invalid credentials or account unverified.';
+      const msg = err.response?.data?.error?.message || 'Invalid roll number or password.';
       setError(msg);
     } finally {
       setLoading(false);
@@ -42,24 +42,11 @@ export const Login = () => {
         </div>
 
         {error && (
-          <div className="p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-2">
+          <div className="p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs">
             <div className="flex items-start space-x-2">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-rose-600" />
               <span className="font-medium">{error}</span>
             </div>
-
-            {error.toLowerCase().includes('verify') && (
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={() => navigate('/verify-email')}
-                  className="w-full py-2 px-3 rounded-lg bg-academic-burgundy text-white font-semibold text-xs hover:bg-academic-burgundy/90 transition-colors flex items-center justify-center space-x-1.5 shadow-xs"
-                >
-                  <Mail className="w-3.5 h-3.5" />
-                  <span>Verify Email / Enter Token</span>
-                </button>
-              </div>
-            )}
           </div>
         )}
 

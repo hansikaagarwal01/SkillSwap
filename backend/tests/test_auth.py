@@ -108,7 +108,8 @@ def test_email_verification_lifecycle():
 
     student = db.query(Student).filter(Student.roll_no == test_roll).first()
     assert student is not None
-    assert student.verification_token_hash is not None
+    assert student.account_status == "ACTIVE"
+    assert student.email_verified is True
 
     # 1. Tampered / invalid token -> 400
     resp_bad = client.post("/api/v1/auth/verify-email", json={"token": "invalid_fake_token_12345"})
@@ -192,13 +193,22 @@ def test_login_and_jwt_lifecycle():
 
 
 def test_unverified_and_suspended_accounts_blocked():
-    # Seed data: 2026BTECH016 is UNVERIFIED
+    # Seed data: 2026BTECH016 is UNVERIFIED with password_hash -> auto-activated on valid login
     resp_unverified = client.post("/api/v1/auth/login", json={
         "roll_no": "2026BTECH016",
         "password": "Student@JKLU2026"
     })
-    assert resp_unverified.status_code == 403
-    assert resp_unverified.json()["error"]["code"] == "EMAIL_UNVERIFIED"
+    assert resp_unverified.status_code == 200
+    assert "access_token" in resp_unverified.json()
+
+    # Restore UNVERIFIED state for subsequent tests
+    db: Session = SessionLocal()
+    st = db.query(Student).filter(Student.roll_no == "2026BTECH016").first()
+    if st:
+        st.account_status = "UNVERIFIED"
+        st.email_verified = False
+        db.commit()
+    db.close()
 
     # Seed data: 2026BTECH018 is SUSPENDED
     resp_suspended = client.post("/api/v1/auth/login", json={

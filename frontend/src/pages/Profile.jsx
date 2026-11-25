@@ -17,7 +17,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
-  ShieldCheck,
 } from 'lucide-react';
 
 export const Profile = () => {
@@ -28,8 +27,6 @@ export const Profile = () => {
   // Edit profile details modal
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [phone, setPhone] = useState('');
-  const [editDeptId, setEditDeptId] = useState('');
-  const [departments, setDepartments] = useState([]);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState('');
 
@@ -78,7 +75,6 @@ export const Profile = () => {
       if (user?.roll_no === currentRoll) {
         setProfile(profResp.data);
         setPhone(profResp.data.phone || '');
-        setEditDeptId(profResp.data.d_id ? String(profResp.data.d_id) : '');
         setExperiences(expResp.data || []);
       }
     } catch (err) {
@@ -98,7 +94,6 @@ export const Profile = () => {
     }
     fetchProfile();
     api.get('/skills').then((res) => setCatalogSkills(res.data)).catch(() => {});
-    api.get('/departments').then((res) => setDepartments(res.data || [])).catch(() => {});
   }, [user?.roll_no]);
 
   const openAddSkillModal = () => {
@@ -160,9 +155,6 @@ export const Profile = () => {
       const payload = {
         phone: phone.trim() || null,
       };
-      if (editDeptId) {
-        payload.d_id = parseInt(editDeptId, 10);
-      }
       await api.patch(`/students/${user.roll_no}`, payload);
       setEditModalOpen(false);
       fetchProfile();
@@ -299,12 +291,6 @@ export const Profile = () => {
               <span>Edit Details</span>
             </button>
           </div>
-        </div>
-
-        {/* Universal Roll_No Immutability Notice */}
-        <div className="mt-6 pt-4 border-t border-academic-border/70 flex items-center space-x-2 text-[11px] text-academic-muted font-mono">
-          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>Universal Primary Key: {profile?.roll_no} (Immutable by academic protocol)</span>
         </div>
       </div>
 
@@ -487,25 +473,6 @@ export const Profile = () => {
               value={profile?.roll_no}
               className="w-full p-2.5 rounded-lg border border-academic-border bg-academic-secondary text-academic-muted font-mono cursor-not-allowed"
             />
-          </div>
-
-          <div>
-            <label className="block font-semibold text-academic-primary mb-1 uppercase tracking-wider">
-              Department
-            </label>
-            <select
-              value={editDeptId}
-              onChange={(e) => setEditDeptId(e.target.value)}
-              className="w-full p-2.5 rounded-lg border border-academic-border bg-academic-bg text-academic-primary focus:outline-none focus:ring-1 focus:ring-academic-burgundy"
-            >
-              {departments
-                .filter((d) => d.program === profile?.program)
-                .map((dept) => (
-                  <option key={dept.d_id} value={String(dept.d_id)}>
-                    {dept.name}
-                  </option>
-                ))}
-            </select>
           </div>
 
           <div>

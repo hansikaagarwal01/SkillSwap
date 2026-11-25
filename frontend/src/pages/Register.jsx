@@ -14,7 +14,6 @@ export const Register = () => {
     email: '',
     phone: '',
     program: 'BTECH',
-    d_id: 1,
     password: '',
     confirm_password: '',
   });
@@ -23,19 +22,6 @@ export const Register = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const [departments, setDepartments] = useState([]);
-
-  useEffect(() => {
-    api
-      .get('/departments')
-      .then((res) => {
-        if (res.data && res.data.length > 0) {
-          setDepartments(res.data);
-        }
-      })
-      .catch((err) => console.error('Failed to fetch departments', err));
-  }, []);
 
   // Auto-detect Admission Year and Program directly from Roll Number string!
   useEffect(() => {
@@ -50,25 +36,18 @@ export const Register = () => {
     }
 
     if (clean.includes('BTECH') && formData.program !== 'BTECH') {
-      const firstBtech = departments.find((d) => d.program === 'BTECH');
-      setFormData((prev) => ({ ...prev, program: 'BTECH', d_id: firstBtech ? firstBtech.d_id : 1 }));
+      setFormData((prev) => ({ ...prev, program: 'BTECH' }));
     } else if (clean.includes('BBA') && formData.program !== 'BBA') {
-      const firstBba = departments.find((d) => d.program === 'BBA');
-      setFormData((prev) => ({ ...prev, program: 'BBA', d_id: firstBba ? firstBba.d_id : 4 }));
+      setFormData((prev) => ({ ...prev, program: 'BBA' }));
     } else if (clean.includes('BDES') && formData.program !== 'BDES') {
-      const firstBdes = departments.find((d) => d.program === 'BDES');
-      setFormData((prev) => ({ ...prev, program: 'BDES', d_id: firstBdes ? firstBdes.d_id : 5 }));
+      setFormData((prev) => ({ ...prev, program: 'BDES' }));
     }
-  }, [formData.roll_no, departments]);
+  }, [formData.roll_no]);
 
   const handleProgramChange = (prog) => {
-    const matched = departments.find((d) => d.program === prog);
-    const defaultDid = matched ? matched.d_id : prog === 'BBA' ? 4 : prog === 'BDES' ? 5 : 1;
-
     setFormData({
       ...formData,
       program: prog,
-      d_id: defaultDid,
     });
   };
 
@@ -98,7 +77,6 @@ export const Register = () => {
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
         phone: formData.phone.trim() || null,
-        d_id: parseInt(formData.d_id, 10),
         program: formData.program,
         admission_year: admissionYear,
         password: formData.password,
@@ -109,7 +87,7 @@ export const Register = () => {
 
       setSuccess(
         resp.data?.message ||
-        `Registration submitted for ${roll}! A single-use verification link has been sent to ${payload.email}. Please verify your email to activate your account.`
+        `Registration successful for ${roll}! Your account is now active and ready to sign in.`
       );
     } catch (err) {
       const msg = err.response?.data?.error?.message || 'Registration failed. Check roll number and email format.';
@@ -146,25 +124,15 @@ export const Register = () => {
               <div className="space-y-1">
                 <p className="font-semibold text-sm">Account Registration Successful!</p>
                 <p className="text-emerald-800">{success}</p>
-                <p className="text-[11px] text-emerald-700">
-                  Check your university inbox for the verification token, or proceed to the verification screen.
-                </p>
               </div>
             </div>
             <div className="flex space-x-2 pt-1">
               <button
                 type="button"
-                onClick={() => navigate('/verify-email')}
+                onClick={() => navigate('/login')}
                 className="py-2 px-4 rounded-lg bg-emerald-700 text-white font-semibold hover:bg-emerald-800 transition-colors shadow-xs"
               >
-                Go to Email Verification
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/login')}
-                className="py-2 px-4 rounded-lg border border-emerald-300 bg-white text-emerald-800 font-medium hover:bg-emerald-50 transition-colors"
-              >
-                Sign In
+                Sign In to Portal
               </button>
             </div>
           </div>
@@ -239,40 +207,19 @@ export const Register = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-academic-primary mb-1 uppercase tracking-wider">
-                Academic Program *
-              </label>
-              <select
-                value={formData.program}
-                onChange={(e) => handleProgramChange(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary text-sm focus:outline-none focus:ring-2 focus:ring-academic-burgundy/40"
-              >
-                <option value="BTECH">B.Tech</option>
-                <option value="BBA">BBA</option>
-                <option value="BDES">B.Des</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-academic-primary mb-1 uppercase tracking-wider">
-                Department *
-              </label>
-              <select
-                value={formData.d_id}
-                onChange={(e) => setFormData({ ...formData, d_id: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary text-sm focus:outline-none focus:ring-2 focus:ring-academic-burgundy/40"
-              >
-                {departments
-                  .filter((d) => d.program === formData.program)
-                  .map((dept) => (
-                    <option key={dept.d_id} value={dept.d_id}>
-                      {dept.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
+          <div>
+            <label className="block text-xs font-semibold text-academic-primary mb-1 uppercase tracking-wider">
+              Academic Program *
+            </label>
+            <select
+              value={formData.program}
+              onChange={(e) => handleProgramChange(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-academic-border bg-academic-bg text-academic-primary text-sm focus:outline-none focus:ring-2 focus:ring-academic-burgundy/40"
+            >
+              <option value="BTECH">B.Tech</option>
+              <option value="BBA">BBA</option>
+              <option value="BDES">B.Des</option>
+            </select>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

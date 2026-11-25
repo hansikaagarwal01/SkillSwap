@@ -40,7 +40,7 @@ def test_email_verification_token_lifecycle_and_single_use():
     db.query(Student).filter(Student.roll_no == test_roll).delete()
     db.commit()
 
-    # 1. Register new student -> status UNVERIFIED
+    # 1. Register new student -> immediately active (email verification skipped)
     resp_reg = client.post("/api/v1/auth/register", json={
         "roll_no": test_roll,
         "name": "Token Lifecycle Student",
@@ -49,13 +49,12 @@ def test_email_verification_token_lifecycle_and_single_use():
         "d_id": 1
     })
     assert resp_reg.status_code == 201
-    assert "Please verify your email" in resp_reg.json()["message"]
+    assert "active" in resp_reg.json()["message"].lower()
 
     student = db.query(Student).filter(Student.roll_no == test_roll).first()
     assert student is not None
-    assert student.account_status == "UNVERIFIED"
-    assert student.email_verified is False
-    assert student.verification_token_hash is not None
+    assert student.account_status == "ACTIVE"
+    assert student.email_verified is True
 
     # 2. Invalid token rejection -> 400
     resp_invalid = client.post("/api/v1/auth/verify-email", json={"token": "completely_fake_token_12345"})
